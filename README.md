@@ -17,3 +17,16 @@ The architecture also utilizes Github as a basis for publishing.  That is not a 
 ## Demonstrations
 
 I use this technology to run my wee website: [my corner of the web](http://www.milowski.com/).
+
+## Status
+
+This is a work in progress and I'm still refactoring all the goodies out of my web application.  At some point in the near future I intend to provide a sample flask application so you can see how it all works.
+
+Here are some ideas that I'm working on:
+
+ * defining ordering facets for various types of content (e.g., a article of type http://schema.org/BlogPosting has ordering facets)
+ * allow a galley of content to be defined by a semantic graph
+ * allow partitioning of a galley of content into "pages" to be defined by a semantic graph
+ * use SPARQL queries to load definitions of web resources based on galley and partitioning graphs
+
+Essentially, I'm trying to make the demonstration web application able to load some of the site page structure from the same semantic pond; more ducks paddling around in the data.
