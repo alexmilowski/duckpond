@@ -11,6 +11,8 @@ class ArticleConverter:
    def __init__(self,weburi,entryuri):
       self.weburi = weburi
       self.entryuri = [ entryuri ]
+      self.vocab = 'http://schema.org'
+      self.typeof = 'BlogPosting'
 
    def enter(self,suffix):
       self.entryuri.append(self.entryuri[-1] + suffix)
@@ -60,7 +62,7 @@ class ArticleConverter:
 
       uri = self.weburi + metadata['published'][0]
 
-      print('<article xmlns="http://www.w3.org/1999/xhtml" vocab="http://schema.org/" typeof="BlogPosting" resource="{}">'.format(uri),file=html)
+      print('<article xmlns="http://www.w3.org/1999/xhtml" vocab="{}" typeof="{}" resource="{}">'.format(self.vocab,self.typeof,uri),file=html)
    
       print('<script type="application/json+ld">',file=html)
       print('{\n"@context" : "http://schema.org/",',file=html)
@@ -114,18 +116,19 @@ if __name__ == "__main__":
    argparser.add_argument('-o',nargs='?',help='The output directory',dest='outdir')
    argparser.add_argument('-w',nargs='?',help='The web uri',dest='weburi',default='http://www.milowski.com/journal/entry/')
    argparser.add_argument('-e',nargs='?',help='The entry uri directory',dest='entryuri',default='http://alexmilowski.github.io/milowski-journal/')
+   argparser.add_argument('--immediate',action='store_true',help='Only process the immediate director (no subdirectories)',dest='immediate')
    argparser.add_argument('dir',nargs=1,help='The directory to process.')
    args = argparser.parse_args()
    inDir = args.dir[0]
    outDir = args.outdir if (args.outdir!=None) else inDir
-   dirs = [d for d in os.listdir(inDir) if not(d[0]=='.') and os.path.isdir(inDir + '/' + d)]
+   dirs = [inDir] if args.immediate else [d for d in os.listdir(inDir) if not(d[0]=='.') and os.path.isdir(inDir + '/' + d)]
 
    converter = ArticleConverter(args.weburi,args.entryuri)
 
    for dir in dirs:
    
-      sourceDir = inDir + '/' + dir
-      targetDir = outDir + '/' + dir
+      sourceDir = inDir + '/' + dir if inDir!='.' else dir
+      targetDir = outDir + '/' + dir if outDir!='.' else dir
    
       if (not(os.path.exists(targetDir))):
          os.makedirs(targetDir)
