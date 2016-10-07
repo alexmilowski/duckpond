@@ -13,12 +13,25 @@ class Pond:
       uri = 1
       stream = 2
       local = 3
-      
+
    def __init__(self,service,cache=None):
       self.service = service
       self.cache = cache
       self.serviceAuth = self.authenticate("anonymous")
       self.resourceAuth = None
+      self.prefixes = { 'schema' : 'http://schema.org'}
+      self.facets =
+         { 'type' : 'schema:BlogPosting',
+           'order' : 'schema:datePublished',
+           'summary' : 'schema:headline',
+           'resource' : 'schema:isBasedOnUrl',
+           'category' : 'schema:keywords'}
+
+   def getProlog(self):
+      glob = io.StringIO()
+      for key in self.prefixes:
+         glob.write("prefix {}: <{}>".format(key,self.prefixes[key]))
+      return glob.getvalue()
 
    def setProxyCache(self,proxy,base):
       this.cache = { 'proxy': proxy, 'base':base }
@@ -31,23 +44,31 @@ class Pond:
       else:
          raise Exception("Unsupported authentication method")
 
-   def currentEntry(self):
-      query = """
-prefix schema: <http://schema.org/>
-select ?s ?headline ?date ?basedOnUrl where { ?s rdf:type schema:BlogPosting; schema:datePublished ?date; schema:headline ?headline; schema:isBasedOnUrl ?basedOnUrl } order by desc(?date)
-"""   
+   def facet(name,value = None):
+      return value if value is not None else self.facets[name]
+
+   def currentEntity(self,entityType = None,order = None,summary = None, resource = None):
+
+      entityType = self.facet('type',entityType)
+      orderFacet = self.facet('order',order)
+      summaryFacet = self.facet('summary',summary)
+      resourceFacet = self.facet('resource',resource)
+
+      query = self.getProlog() + """
+select ?s ?summary ?ordering ?basedOnUrl where { ?s rdf:type {1}; {2} ?ordering; {3} ?summary; {4} ?basedOnUrl } order by desc(?date)
+""".format(entityType,orderFacet,summaryFacet,resourceFacet)
       params = {'limit':2,'query':query}
-   
+
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
 
       if (req.status_code>=200 or req.status_code<300):
          data = json.loads(req.text)
          subject = data['values'][0][0][1:-1]
-         title = data['values'][0][1][1:-1]
+         summary = data['values'][0][1][1:-1]
          dateTime = data['values'][0][2][1:-1]
          basedOnUrl = data['values'][0][3][1:-1]
-         date,time = dateTime.split('T')
-         return (subject,title,date,time,basedOnUrl,{'uri':relative(data['values'][1][0][1:-1]),'title':data['values'][1][1][1:-1]} if len(data['values'])>1 else None)
+         date,time = dateTime.split('T') # Need to check that is xsd:dateTime
+         return (subject,summary,date,time,basedOnUrl,{'uri':relative(data['values'][1][0][1:-1]),'summary':data['values'][1][1][1:-1]} if len(data['values'])>1 else None)
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
@@ -91,16 +112,18 @@ select ?s ?headline ?date ?basedOnUrl where { ?s rdf:type schema:BlogPosting; sc
          return (Pond.ResourceType.stream,req.iter_content(),req.headers['content-type'])
       elif uri[0:7]=='file://':
          return (Pond.ResourceType.local, uri[7:],None)
-   
-   def relatedEntry(self,dateTime,previous):
-      query = """
-prefix schema: <http://schema.org/>
-select ?s ?headline ?date 
-where { 
-   ?s rdf:type schema:BlogPosting; schema:datePublished ?date; schema:headline ?headline .
-   FILTER( ?date """ + ('>' if previous else '<') + ' "' + dateTime + '"' + """ )
-} 
-order by """ + ('?date' if previous else 'desc(?date)')
+
+   def relatedEntityByOrder(self,orderValue,previous = True,entityType = None,order = None,summary = None):
+      entityType = self.facet('type',entityType)
+      orderFacet = self.facet('order',order)
+      summaryFacet = self.facet('summary',summary)
+      query = self.getProlog() + """
+select ?s ?summary ?ordering
+where {
+   ?s rdf:type {1}; {2} ?ordering; {3} ?summary .
+   FILTER( ?ordering """ + ('>' if previous else '<') + ' "' + dateTime + '"' + """ )
+}
+order by """.format(entityType,orderFacet,summaryFacet) + ('?ordering' if previous else 'desc(?ordering)')
       params = {'limit':1,'query':query}
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -111,14 +134,17 @@ order by """ + ('?date' if previous else 'desc(?date)')
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
-   def entryByDateTime(self,dateTime):
-      query = """
-prefix schema: <http://schema.org/>
+   def entityByOrder(self,orderValue,entityType = None,order = None,summary = None,resource = None):
+      entityType = self.facet('type',entityType)
+      orderFacet = self.facet('order',order)
+      summaryFacet = self.facet('summary',summary)
+      resourceFacet = self.facet('resource',resource)
+      query = self.getProlog() + """
 select ?s ?headline ?isBasedOnUrl
-where { 
-   ?s rdf:type schema:BlogPosting; schema:datePublished """ + '"' + dateTime + '"' + """; schema:headline ?headline ; schema:isBasedOnUrl ?isBasedOnUrl.
-} 
-"""
+where {
+   ?s rdf:type {1}; {2} """ + '"' + orderValue + '"' + """; {3} ?headline ; {4} ?isBasedOnUrl.
+}
+""".format(entityType,orderFacet,summaryFacet,resourceFacet)
       params = {'limit':1,'query':query}
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -132,16 +158,17 @@ where {
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
-   def getKeywordCount(self):
-      query = """
-prefix schema: <http://schema.org/>
-select ?keyword (count(?keyword) as ?count)
-where { 
-     ?s rdf:type schema:BlogPosting; schema:keywords ?keyword 
+   def getCategoryCount(self,entity = None,category = None):
+      entityType = self.facet('type',entityType)
+      categoryFacet = self.facet('category',category)
+      query = self.getProlog() + """
+select ?category (count(?category) as ?count)
+where {
+     ?s rdf:type {1}; {2} ?category
 }
-group by ?keyword
+group by ?category
 order by desc(?count)
-"""   
+""".format(entityType,categoryFacet)
       params = {'limit':100,'query':query}
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -156,14 +183,16 @@ order by desc(?count)
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
-   def getEntryKeywords(self,subject):
+   def getEntityCategories(self,subject,entity = None,category = None):
+      entityType = self.facet('type',entityType)
+      categoryFacet = self.facet('category',category)
       query = """
 prefix schema: <http://schema.org/>
-select ?keyword 
-where { 
-   <""" + subject +"""> rdf:type schema:BlogPosting; schema:keywords ?keyword 
+select ?category
+where {
+   <""" + subject +"""> rdf:type {1}; {2} ?category
 }
-"""   
+""".format(entityType,categoryFacet)
       params = {'limit':100,'query':query}
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -177,15 +206,19 @@ where {
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
-   def getEntriesByKeyword(self,keyword):
+   def getEntitiesByCategory(self,category,limit = 100,entity = None,category = None,order = None,summary = None):
+      entityType = self.facet('type',entityType)
+      categoryFacet = self.facet('category',category)
+      summaryFacet = self.facet('summary',summary)
+      orderFacet = self.facet('order',order)
       query = """
 prefix schema: <http://schema.org/>
-select ?s ?date ?headline 
-where { 
-   ?s rdf:type schema:BlogPosting; schema:headline ?headline; schema:datePublished ?date; schema:keywords """ + '"' + keyword + '"' """ 
+select ?s ?date ?headline
+where {
+   ?s rdf:type {1}; {2} ?headline; {3} ?date; {4} """ + '"' + category + '"' """
 }
-"""   
-      params = {'limit':100,'query':query}
+""".format(entityType,summaryFacet,orderFacet,categoryFacet)
+      params = {'limit':limit,'query':query}
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
 
@@ -197,4 +230,3 @@ where {
          return entries
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
-
