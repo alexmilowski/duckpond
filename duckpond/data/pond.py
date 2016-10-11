@@ -245,6 +245,8 @@ class Pond:
       if (req.status_code>=200 or req.status_code<300):
          data = json.loads(req.text)
          values = data['values']
+         if len(values)==0:
+            return None
          subject = strip(values[0][0])
          title = strip(values[0][1])
          summary = strip(values[0][2])
