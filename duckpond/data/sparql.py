@@ -32,8 +32,28 @@ class SPARQL:
          self.statement.write('from named <{0}>\n'.format(graph))
       return self
 
+   def withGraph(self,graph):
+      self.statement.write("with <{0}>\n".format(graph))
+      return self
+
    def where(self,*expressions):
       self.statement.write('where {')
+      for expression in expressions:
+         self.statement.write(str(expression))
+         self.statement.write('\n')
+      self.statement.write('}\n')
+      return self
+
+   def insert(self,*expressions):
+      self.statement.write('insert {')
+      for expression in expressions:
+         self.statement.write(str(expression))
+         self.statement.write('\n')
+      self.statement.write('}\n')
+      return self
+
+   def delete(self,*expressions):
+      self.statement.write('delete {')
       for expression in expressions:
          self.statement.write(str(expression))
          self.statement.write('\n')
