@@ -1,5 +1,5 @@
 import requests
-import json,io
+import json,io,os
 from enum import Enum
 import urllib
 from .sparql import SPARQL
@@ -38,9 +38,42 @@ orgSchema = [
    Facet('order','schema:datePublished','xsd:dateTime'),
    Facet('title','schema:headline'),
    Facet('summary','schema:description'),
-   Facet('resource','schema:isBasedOnUrl','xsd:anyURI'),
-   Facet('category','schema:keywords')
+   Facet('name','schema:name'),
+   Facet('resource','schema:hasPart','xsd:anyURI'),
+   Facet('category','schema:keywords'),
+   Facet('contentUrl','schema:contentUrl'),
+   Facet('fileFormat','schema:fileFormat'),
+   Facet('associatedMedia','schema:associatedMedia','xsd:anyURI'),
+
+   Facet('Article','schema:Article'),
+   Facet('MediaObject','schema:MediaObject'),
+   Facet('ImageObject','schema:ImageObject'),
+   Facet('ImageGallery','schema:ImageGallery')
 ]
+
+def criteriaConditions(pond,criteria,subjectVar='s'):
+   conditions = io.StringIO()
+   def addLiteralCriteria(property,value):
+      conditions.write('\n?{0} {1} "{2}" .'.format(subjectVar,property,value))
+   def addURICriteria(property,value):
+      conditions.write('\n?{0} {1} <{2}> .'.format(subjectVar,property,value))
+   for property in criteria.keys():
+      value = criteria[property]
+      if property.find(':')<0:
+         property = 'schema:' + property
+      if type(value)==dict:
+         literal = value.get('@value')
+         typename = value.get('@type')
+         if literal is not None:
+            if typename=='xsd:anyURI' or pond.isURIProperty(property):
+               addURICriteria(property,literal)
+            else:
+               addLiteralCriteria(property,literal)
+      elif pond.isURIProperty(property):
+         addURICriteria(property,value)
+      else:
+         addLiteralCriteria(property,value)
+   return conditions.getvalue()
 
 class Pond:
 
@@ -58,8 +91,15 @@ class Pond:
       self.cache = cache
       self.serviceAuth = self.authenticate('anonymous')
       self.resourceAuth = None
+      self.resourceToken = None
       self.prefixes = { 'schema' : 'http://schema.org/'}
       self.graphs = []
+      self.propertyTypes = {
+         'url' : 'xsd:anyURI',
+         'contentUrl' : 'xsd:anyURI',
+         'isBasedOn' : 'xsd:anyURI',
+         'isBasedOnUrl' : 'xsd:anyURI'
+      }
       if graphs is not None:
          for graph in graphs:
             self.graphs.append(graph)
@@ -70,6 +110,10 @@ class Pond:
       if facets is not None:
          for facet in facets:
             self.facets[facet.id] = facet
+
+   def isURIProperty(self,property):
+      typename = self.propertyTypes.get(property)
+      return True if typename=='xsd:anyURI' else False
 
    def getProlog(self):
       glob = io.StringIO()
@@ -105,20 +149,24 @@ class Pond:
       return named
 
    def facet(self,name,value = None):
+      if type(value)==str:
+         value = self.facets[value]
       return value if value is not None else self.facets[name]
 
-   def currentEntity(self,entity = None,order = None,title = None, summary = None, resource = None):
+   def currentEntity(self,entity = None,order = None,title = None, summary = None, criteria = None):
 
       entityType = self.facet('type',entity)
       orderFacet = self.facet('order',order)
       titleFacet = self.facet('title',title)
       summaryFacet = self.facet('summary',summary)
-      resourceFacet = self.facet('resource',resource)
 
-      expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; {4} ?basedOnUrl . optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet,resourceFacet)
+      expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; . optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet)
+      if criteria is not None:
+         expr = expr + criteriaConditions(self,criteria)
+
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['s','title','summary','ordering','basedOnUrl']) \
+            .select(['s','title','summary','ordering']) \
             .fromGraphs(self.graphs) \
             .where(expr) \
             .orderBy('desc(?ordering)')
@@ -136,11 +184,45 @@ class Pond:
          title = strip(data['values'][0][1])
          summary = strip(data['values'][0][2])
          dateTime = strip(data['values'][0][3])
-         basedOnUrl = strip(data['values'][0][4])
          date,time = dateTime.split('T') # Need to check that is xsd:dateTime
-         return (subject,title,summary,date,time,basedOnUrl)
+         return (subject,title,summary,date,time)
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
+
+   def getEntityByName(self,value,name=None,title=None,order=None,summary=None,criteria=None):
+      nameFacet = self.facet('name',name)
+      orderFacet = self.facet('order',order)
+      titleFacet = self.facet('title',title)
+      summaryFacet = self.facet('summary',summary)
+
+      expr = '?s {0} "{1}"; {2} ?ordering; {2} ?title; . optional {{ ?s {3} ?summary . }}'.format(nameFacet,value,orderFacet,titleFacet,summaryFacet)
+      if criteria is not None:
+         expr = expr + criteriaConditions(self,criteria)
+
+      q = SPARQL() \
+            .start(self.prefixes) \
+            .select(['s','title','summary','ordering']) \
+            .fromGraphs(self.graphs) \
+            .where(expr) \
+            .orderBy('desc(?ordering)')
+      #print(q)
+      params = self.mergeParameters({'limit':1,'query':str(q)})
+
+      req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
+
+      if (req.status_code>=200 or req.status_code<300):
+         #print(req.text)
+         data = json.loads(req.text)
+         if len(data['values']) == 0:
+            return None
+         subject = strip(data['values'][0][0])
+         title = strip(data['values'][0][1])
+         summary = strip(data['values'][0][2])
+         dateTime = strip(data['values'][0][3])
+         date,time = dateTime.split('T') # Need to check that is xsd:dateTime
+         return (subject,title,summary,date,time)
+      else:
+         raise IOError('Cannot query uri <{}>, status={}'.format(self.service,req.status_code))
 
    def proxyURL(self,resource):
       uri = resource
@@ -150,12 +232,15 @@ class Pond:
          uri = self.cache['proxy'] + relative
       return uri
 
-   def getResourceText(self,resource):
+   def getResourceText(self,resource,authorization=None):
 
       uri = self.proxyURL(resource)
 
       if self.cache==None or uri[0:5]=='http:' or uri[0:6]=='https:':
-         req = requests.get(uri,auth=self.resourceAuth)
+         headers = {}
+         if self.resourceToken is not None:
+            headers['Authorization'] = 'Bearer ' + self.resourceToken
+         req = requests.get(uri,auth=self.resourceAuth,headers=headers)
          if (req.status_code == 200):
             return req.text
          else:
@@ -178,24 +263,29 @@ class Pond:
       if self.cache!=None and 'redirect' in self.cache and self.cache['redirect']:
          return (Pond.ResourceType.uri,uri,303)
       if self.cache==None or uri[0:5]=='http:' or uri[0:6]=='https:':
-         req = requests.get(uri, stream = True,auth=self.resourceAuth)
-         return (Pond.ResourceType.stream,req.iter_content(),req.headers['content-type'])
+         headers = {}
+         if self.resourceToken is not None:
+            headers['Authorization'] = 'Bearer ' + self.resourceToken
+         req = requests.get(uri, stream = True,auth=self.resourceAuth,headers=headers)
+         return (Pond.ResourceType.stream,req.iter_content(8192),req.headers['content-type'],req.headers.get('content-length'))
       elif uri[0:7]=='file://':
-         return (Pond.ResourceType.local, uri[7:],None)
+         location = uri[7:]
+         return (Pond.ResourceType.local,location,None,os.path.getsize(location))
       else:
-         return (Pond.ResourceType.local, uri,None)
+         return (Pond.ResourceType.local,uri,None,os.path.getsize(uri))
 
-   def relatedEntityByOrder(self,value,previous = True,limit = 1,singleton = False,entity = None,order = None,title = None, summary = None, resource = None):
+   def relatedEntityByOrder(self,value,previous = True,limit = 1,singleton = False,entity = None,order = None,title = None, summary = None, criteria = None):
       entityType = self.facet('type',entity)
       orderFacet = self.facet('order',order)
       titleFacet = self.facet('title',title)
       summaryFacet = self.facet('summary',summary)
-      resourceFacet = self.facet('resource',resource)
-      expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; {4} ?basedOnUrl . optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet,resourceFacet) \
+      expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; . optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet) \
              + ' FILTER( ?ordering ' + ('>' if previous else '<') + ' ' + orderFacet.toLiteral(value) + ' )'
+      if criteria is not None:
+         expr = expr + criteriaConditions(self,criteria)
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['s','title','summary','ordering','basedOnUrl']) \
+            .select(['s','title','summary','ordering']) \
             .fromGraphs(self.graphs) \
             .where(expr ) \
             .orderBy('desc(?ordering)')
@@ -212,29 +302,30 @@ class Pond:
          elif len(values)==1 and not singleton:
             row = values[0]
             date,time = strip(row[3]).split('T')
-            return (strip(row[0]),strip(row[1]),strip(row[2]),date,time,strip(row[4]))
+            return (strip(row[0]),strip(row[1]),strip(row[2]),date,time)
          else:
             result = []
             for row in values:
                date,time = strip(row[3]).split('T')
-               result.append((strip(row[0]),strip(row[1]),strip(row[2]),date,time,strip(row[4])))
+               result.append((strip(row[0]),strip(row[1]),strip(row[2]),date,time))
             return result
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
-   def entityByOrder(self,value,entity = None,order = None,title = None,summary = None,resource = None):
-      return self.entityByValue(value,self.facet('order',order),entity=entity,order=order,title=title,summary=summary,resource=resource)
+   def entityByOrder(self,value,entity = None,order = None,title = None,summary = None,resource = None, criteria = None):
+      return self.entityByValue(value,self.facet('order',order),entity=entity,order=order,title=title,summary=summary,resource=resource,criteria=criteria)
 
-   def entityByValue(self,value,facet,entity = None,order = None,title = None,summary = None,resource = None):
+   def entityByValue(self,value,facet,entity = None,order = None,title = None,summary = None,resource = None, criteria = None):
       entityType = self.facet('type',entity)
       orderFacet = self.facet('order',order)
       titleFacet = self.facet('title',title)
       summaryFacet = self.facet('summary',summary)
-      resourceFacet = self.facet('resource',resource)
-      expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; {4} ?basedOnUrl; {5} {6}. optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet,resourceFacet,facet,facet.toLiteral(value))
+      expr = '?s {0} ?ordering; {1} ?title; {3} {4}. optional {{ ?s {2} ?summary . }}'.format(orderFacet,titleFacet,summaryFacet,facet,facet.toLiteral(value))
+      if criteria is not None:
+         expr = expr + criteriaConditions(self,criteria)
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['s','title','summary','ordering','basedOnUrl']) \
+            .select(['s','title','summary','ordering']) \
             .fromGraphs(self.graphs) \
             .where(expr)
       #print(q)
@@ -251,9 +342,8 @@ class Pond:
          title = strip(values[0][1])
          summary = strip(values[0][2])
          dateTime = strip(values[0][3])
-         basedOnUrl = strip(values[0][4])
          date,time = dateTime.split('T') # Need to check that is xsd:dateTime
-         return (subject,title,summary,date,time,basedOnUrl)
+         return (subject,title,summary,date,time)
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
@@ -311,11 +401,10 @@ class Pond:
       titleFacet = self.facet('title',title)
       summaryFacet = self.facet('summary',summary)
       orderFacet = self.facet('order',order)
-      resourceFacet = self.facet('resource',resource)
-      expr = '?s rdf:type {0}; {1} ?title; {3} ?date; {4} ?basedOnUrl; {5} {6} . optional {{ ?s {2} ?summary; }}'.format(entityType,titleFacet,summaryFacet,orderFacet,resourceFacet,categoryFacet,categoryFacet.toLiteral(value))
+      expr = '?s rdf:type {0}; {1} ?title; {3} ?date; {4} {5} . optional {{ ?s {2} ?summary; }}'.format(entityType,titleFacet,summaryFacet,orderFacet,categoryFacet,categoryFacet.toLiteral(value))
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['s','title','summary','date','basedOnUrl']) \
+            .select(['s','title','summary','date']) \
             .fromGraphs(self.graphs) \
             .where(expr)
       params = self.mergeParameters({'limit':limit,'query':str(q)})
@@ -327,7 +416,39 @@ class Pond:
          result = []
          for row in data['values']:
             date,time = strip(row[3]).split('T')
-            result.append((strip(row[0]),strip(row[1]),strip(row[2]),date,time,strip(row[4])))
+            result.append((strip(row[0]),strip(row[1]),strip(row[2]),date,time))
          return result
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
+
+   def getEntityResource(self,subject,singleton = False,resource=None,contentUrl=None,fileFormat=None,criteria=None):
+      resourceFacet = self.facet('resource',resource)
+      contentUrlFacet = self.facet('contentUrl',contentUrl)
+      fileFormatFacet = self.facet('fileFormat',fileFormat)
+      expr = '<{0}> {1} ?r . ?r rdf:type ?type; {2} ?url; {3} ?format .'.format(subject,resourceFacet,contentUrlFacet,fileFormatFacet)
+      if criteria is not None:
+         expr = expr + criteriaConditions(self,criteria,subjectVar='r')
+      q = SPARQL() \
+            .start(self.prefixes) \
+            .select(['url','format','type']) \
+            .fromGraphs(self.graphs) \
+            .where(expr)
+      params = self.mergeParameters({'query':str(q)})
+      #print(q)
+      req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
+
+      if (req.status_code>=200 or req.status_code<300):
+         data = json.loads(req.text)
+         values = data['values']
+         if len(values)==0:
+            return None
+         elif len(values)==1 and not singleton:
+            row = values[0]
+            return (strip(row[0]),strip(row[1]),strip(row[2]))
+         else:
+            result = []
+            for row in values:
+               result.append((strip(row[0]),strip(row[1]),strip(row[2])))
+            return result
+      else:
+         raise IOError('Cannot get data from uri <{}>, status={}'.format(self.service,req.status_code))

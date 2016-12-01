@@ -15,7 +15,15 @@ def authenticate(f):
          s = str(base64.b64decode(v[6:]),'utf-8')
          username = s[0:s.find(':')]
          password = s[s.find(':')+1:]
-         authenticated = app.config['AUTH_SERVICE'].authenticate(username,password);
+         info = app.config['AUTH_SERVICE'].authenticate(username,password);
+         if info is not None:
+            request.roles = info.get('roles')
+            authenticated = True
+      if v is not None and v.find('Bearer ')==0:
+         roles = app.config['AUTH_SERVICE'].validateToken(v[7:])
+         if roles is not None:
+            authenticated = True
+            request.roles = roles
       if authenticated:
          return f(*args, **kwargs)
       else:

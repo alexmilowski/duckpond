@@ -89,7 +89,7 @@ class Service:
 
       req = requests.put(uri,data=data,headers={'content-type':'text/turtle; charset=utf-8'},auth=self.auth)
 
-      print(req.status_code)
+      #print(req.status_code)
 
       if (req.status_code<200 or req.status_code>=300):
          raise IOError('Cannot put data to uri <{}>, status={}'.format(uri,req.status_code))
@@ -114,7 +114,7 @@ class Service:
       if graph is not None:
          params['context'] = '<' + graph + '>'
 
-      print(str(q))
+      #print(str(q))
 
       req = requests.get(self.endpoints['query'],params=params,headers={'accept':'application/json'},auth=self.auth)
 
@@ -132,12 +132,12 @@ class Service:
       if graph is not None:
          params['context'] = '<' + graph + '>'
 
-      print(str(q))
+      #print(str(q))
 
       req = requests.post(self.endpoints['query'],params=params,headers={'accept':'application/json'},auth=self.auth)
 
       if (req.status_code>=200 or req.status_code<300):
-         print(req.text)
+         #print(req.text)
          data = json.loads(req.text)
          return data
       else:
@@ -354,6 +354,8 @@ def content():
 
    # GET returns a list of entities
    if request.method == 'GET':
+      if 'reader' not in request.roles:
+         abort(401)
       q = SPARQL() \
             .start({ 'schema' : 'http://schema.org/'}) \
             .select(['s','genre','type','name','headline','url']) \
@@ -366,6 +368,8 @@ def content():
 
    # POST creates an entity
    if request.method == 'POST':
+      if 'writer' not in request.roles:
+         abort(401)
 
       # Parse the incoming JSON-LD data
       force = request.headers['Content-Type'] == 'application/ld+json'
@@ -401,6 +405,8 @@ def content_item(id):
    if subject == None:
       abort(404)
    if request.method == 'PUT':
+      if 'writer' not in request.roles:
+         abort(401)
       # Replace triples
 
       # Parse the incoming JSON-LD data
@@ -438,6 +444,8 @@ def content_item(id):
       return jsonld_response(json.dumps(obj))
 
    if request.method == 'POST':
+      if 'writer' not in request.roles:
+         abort(401)
       force = request.headers['Content-Type'] == 'application/ld+json'
       data = request.get_json(force=force)
       if data is None:
@@ -460,13 +468,17 @@ def content_item(id):
       return jsonld_response(json.dumps(obj))
 
    if request.method == 'GET':
+      if 'reader' not in request.roles:
+         abort(401)
       # Retrieve content
       quads = service.retrieve(graph=url)
-      print(quads)
+      #print(quads)
       obj = toJSONLD(subject,quads)
       return jsonld_response(json.dumps(obj))
 
    if request.method == 'DELETE':
+      if 'writer' not in request.roles:
+         abort(401)
       service.deleteGraph(url)
       return Response(status=204)
 
@@ -488,11 +500,13 @@ def content_item_resource_property(id,resource,property):
 
    # allow PUT to create a resource
    if request.method == 'PUT':
+      if 'writer' not in request.roles:
+         abort(401)
       # Creating content
       contentType = request.headers['Content-Type']
       if property is None:
          property = "associatedMedia"
-      print(request.headers)
+      #print(request.headers)
       status = app.config['RESOURCE_SERVICE'].putResource(resourceURL,request.stream,content_type=contentType)
       if status>=200 and status<300:
          if subject is None:
@@ -503,10 +517,10 @@ def content_item_resource_property(id,resource,property):
                mediaObjectType = 'ImageObject'
             elif contentType.find("video/")==0:
                mediaObjectType = 'VideoObject'
-            turtle.about(parentSubject,{property : {"@type" : mediaObjectType, "contentUrl" : resourceURL, "fileFormat" : contentType }})
+            turtle.about(parentSubject,{property : {"@type" : mediaObjectType, "contentUrl" : resourceURL, "fileFormat" : contentType, "name" : resource }})
             service.post(turtle.end(),graph=url)
          else:
-            print(subject)
+            #print(subject)
             q = SPARQL() \
                   .start({ 'schema' : 'http://schema.org/'}) \
                   .withGraph(url) \
@@ -521,8 +535,10 @@ def content_item_resource_property(id,resource,property):
       abort(404)
 
    if request.method == 'GET':
+      if 'reader' not in request.roles:
+         abort(401)
       contentType, = subjectProperties(subject,'fileFormat')
-      print(contentType)
+      #print(contentType)
       status,data,size = app.config['RESOURCE_SERVICE'].getResource(resourceURL)
       if status!=200:
          abort(status)
@@ -531,6 +547,8 @@ def content_item_resource_property(id,resource,property):
       return response
 
    if request.method == 'DELETE':
+      if 'writer' not in request.roles:
+         abort(401)
       # Retrieve content
       status = app.config['RESOURCE_SERVICE'].deleteResource(resourceURL)
       if status>=200 and status<300:
