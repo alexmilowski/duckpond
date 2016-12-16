@@ -119,7 +119,6 @@ class Service:
       req = requests.get(self.endpoints['query'],params=params,headers={'accept':'application/json'},auth=self.auth)
 
       if (req.status_code>=200 or req.status_code<300):
-         #print(req.text)
          data = json.loads(req.text)
          return data
       else:
@@ -345,7 +344,7 @@ def subjectProperties(s,*names):
 
 def jsonld_response(data):
    response = make_response(data)
-   response.headers['Content-Type'] = "application/json; charset=utf-8"
+   response.headers['Content-Type'] = "application/ld+json; charset=utf-8"
    return response
 
 @app.route('/content/',methods=['GET','POST'])
