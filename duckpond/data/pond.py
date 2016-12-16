@@ -244,6 +244,7 @@ class Pond:
          if (req.status_code == 200):
             return req.text
          else:
+            print(req.text)
             raise IOError('Cannot get <{}>, status={}'.format(uri,req.status_code))
       elif uri[0:7]=='file://':
          entryFile = open(uri[7:], mode='r', encoding='utf-8')
@@ -267,7 +268,7 @@ class Pond:
          if self.resourceToken is not None:
             headers['Authorization'] = 'Bearer ' + self.resourceToken
          req = requests.get(uri, stream = True,auth=self.resourceAuth,headers=headers)
-         return (Pond.ResourceType.stream,req.iter_content(8192),req.headers['content-type'],req.headers.get('content-length'))
+         return (Pond.ResourceType.stream,req.iter_content(20*1024),req.headers['content-type'],req.headers.get('content-length'))
       elif uri[0:7]=='file://':
          location = uri[7:]
          return (Pond.ResourceType.local,location,None,os.path.getsize(location))
