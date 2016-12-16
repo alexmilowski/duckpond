@@ -1,4 +1,8 @@
 import shutil, os
+from io import BufferedReader
+from tempfile import TemporaryFile
+from urllib.parse import urlparse
+import boto3, botocore
 
 class FileResourceService:
    def __init__(self,base=None,directory='.',cleanup=True):
@@ -54,3 +58,55 @@ class FileResourceService:
             # An exception means the directory is not empty and that's okay!
             pass
       return 200
+
+class S3ResourceService:
+   def __init__(self,access_key_id,secret_access_key,bucket,bucket_domains={},tmpdir=None):
+      self.s3 = boto3.client('s3',aws_access_key_id=access_key_id,aws_secret_access_key=secret_access_key)
+      self.bucket_name = bucket
+      self.bucket_domains = bucket_domains
+      self.tmpdir = tmpdir
+
+   def parseLocation(self,url):
+      spec = urlparse(url)
+      colon = spec.netloc.find(':')
+      return (spec.netloc[0:colon] if colon>0 else spec.netloc,spec.path[1:])
+
+   def getBucket(self,domain):
+      bucket = self.bucket_domains.get(domain)
+      return bucket if bucket is not None else self.bucket_name
+
+   def getResource(self,url):
+      domain,path = self.parseLocation(url)
+      try:
+         response = self.s3.get_object(Bucket=self.getBucket(domain),Key=path)
+         return (200,response['Body'],response['ContentLength'])
+      except botocore.exceptions.ClientError as e:
+         if e.response['Error']['Code'] == "404":
+            return (404,None,None)
+         else:
+            raise e
+
+   def putResource(self,url,stream,content_type=None):
+      domain,path = self.parseLocation(url)
+      creating = False
+      try:
+         self.s3.head_object(Bucket=self.getBucket(domain),Key=path)
+      except botocore.exceptions.ClientError as e:
+         if e.response['Error']['Code'] == "404":
+            creating = True
+         else:
+            raise e
+      with TemporaryFile(dir=self.tmpdir) as cached:
+         shutil.copyfileobj(stream,cached)
+         cached.seek(0)
+         self.s3.put_object(Bucket=self.getBucket(domain),Body=cached,Key=path,ContentType=content_type)
+      return 201 if creating else 204
+
+   def deleteResource(self,url):
+      domain,path = self.parseLocation(url)
+      try:
+         self.s3.delete_object(Bucket=self.getBucket(domain),Key=path)
+      except botocore.exceptions.ClientError as e:
+         if e.response['Error']['Code'] != "404":
+            raise e
+      return 204
