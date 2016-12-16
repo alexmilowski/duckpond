@@ -244,7 +244,6 @@ class Pond:
          if (req.status_code == 200):
             return req.text
          else:
-            print(req.text)
             raise IOError('Cannot get <{}>, status={}'.format(uri,req.status_code))
       elif uri[0:7]=='file://':
          entryFile = open(uri[7:], mode='r', encoding='utf-8')
