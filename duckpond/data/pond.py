@@ -18,6 +18,10 @@ def strip(value):
    else:
       return value
 
+def literal(value):
+   value = strip(value)
+   return value.replace('\\"','"')
+
 class Facet:
    def __init__(self,id,name,type = 'xsd:string'):
       self.id = id
@@ -39,6 +43,7 @@ orgSchema = [
    Facet('title','schema:headline'),
    Facet('summary','schema:description'),
    Facet('name','schema:name'),
+   Facet('genre','schema:genre'),
    Facet('resource','schema:hasPart','xsd:anyURI'),
    Facet('category','schema:keywords'),
    Facet('contentUrl','schema:contentUrl'),
@@ -153,20 +158,22 @@ class Pond:
          value = self.facets[value]
       return value if value is not None else self.facets[name]
 
-   def currentEntity(self,entity = None,order = None,title = None, summary = None, criteria = None):
+   def currentEntity(self,entity = None,order = None,title = None, summary = None, criteria = None, name = None, genre = None):
 
       entityType = self.facet('type',entity)
       orderFacet = self.facet('order',order)
       titleFacet = self.facet('title',title)
       summaryFacet = self.facet('summary',summary)
+      nameFacet = self.facet('name',name)
+      genreFacet = self.facet('genre',genre)
 
-      expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; . optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet)
+      expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; {4} ?name; {5} ?genre; . optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet,nameFacet,genreFacet)
       if criteria is not None:
          expr = expr + criteriaConditions(self,criteria)
 
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['s','title','summary','ordering']) \
+            .select(['s','title','summary','ordering','name','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr) \
             .orderBy('desc(?ordering)')
@@ -181,27 +188,30 @@ class Pond:
          if len(data['values']) == 0:
             return None
          subject = strip(data['values'][0][0])
-         title = strip(data['values'][0][1])
-         summary = strip(data['values'][0][2])
+         title = literal(data['values'][0][1])
+         summary = literal(data['values'][0][2])
          dateTime = strip(data['values'][0][3])
+         nameValue = strip(data['values'][0][4])
+         genreValue = strip(data['values'][0][5])
          date,time = dateTime.split('T') # Need to check that is xsd:dateTime
-         return (subject,title,summary,date,time)
+         return (subject,title,summary,date,time,nameValue,genreValue)
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
-   def getEntityByName(self,value,name=None,title=None,order=None,summary=None,criteria=None):
+   def getEntityByName(self,value,name=None,title=None,order=None,summary=None,criteria=None,genre=None):
       nameFacet = self.facet('name',name)
       orderFacet = self.facet('order',order)
       titleFacet = self.facet('title',title)
       summaryFacet = self.facet('summary',summary)
+      genreFacet = self.facet('genre',genre)
 
-      expr = '?s {0} "{1}"; {2} ?ordering; {2} ?title; . optional {{ ?s {3} ?summary . }}'.format(nameFacet,value,orderFacet,titleFacet,summaryFacet)
+      expr = '?s {0} "{1}"; {2} ?ordering; {3} ?title; {5} ?genre; . optional {{ ?s {4} ?summary . }}'.format(nameFacet,value,orderFacet,titleFacet,summaryFacet,genreFacet)
       if criteria is not None:
          expr = expr + criteriaConditions(self,criteria)
 
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['s','title','summary','ordering']) \
+            .select(['s','title','summary','ordering','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr) \
             .orderBy('desc(?ordering)')
@@ -216,11 +226,12 @@ class Pond:
          if len(data['values']) == 0:
             return None
          subject = strip(data['values'][0][0])
-         title = strip(data['values'][0][1])
-         summary = strip(data['values'][0][2])
+         title = literal(data['values'][0][1])
+         summary = literal(data['values'][0][2])
          dateTime = strip(data['values'][0][3])
          date,time = dateTime.split('T') # Need to check that is xsd:dateTime
-         return (subject,title,summary,date,time)
+         genreValue = strip(data['values'][0][4])
+         return (subject,title,summary,date,time,value,genreValue)
       else:
          raise IOError('Cannot query uri <{}>, status={}'.format(self.service,req.status_code))
 
@@ -274,18 +285,20 @@ class Pond:
       else:
          return (Pond.ResourceType.local,uri,None,os.path.getsize(uri))
 
-   def relatedEntityByOrder(self,value,previous = True,limit = 1,singleton = False,entity = None,order = None,title = None, summary = None, criteria = None):
+   def relatedEntityByOrder(self,value,previous = True,limit = 1,singleton = False,entity = None,order = None,title = None, summary = None, criteria = None, name=None, genre=None):
       entityType = self.facet('type',entity)
       orderFacet = self.facet('order',order)
       titleFacet = self.facet('title',title)
       summaryFacet = self.facet('summary',summary)
-      expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; . optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet) \
+      nameFacet = self.facet('name',name)
+      genreFacet = self.facet('genre',genre)
+      expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; {4} ?name; {5} ?genre; . optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet,nameFacet,genreFacet) \
              + ' FILTER( ?ordering ' + ('>' if previous else '<') + ' ' + orderFacet.toLiteral(value) + ' )'
       if criteria is not None:
          expr = expr + criteriaConditions(self,criteria)
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['s','title','summary','ordering']) \
+            .select(['s','title','summary','ordering','name','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr ) \
             .orderBy('desc(?ordering)')
@@ -301,31 +314,43 @@ class Pond:
             return None
          elif len(values)==1 and not singleton:
             row = values[0]
+            subjectValue = strip(row[0])
+            titleValue = literal(row[1])
+            summaryValue = literal(row[2])
             date,time = strip(row[3]).split('T')
-            return (strip(row[0]),strip(row[1]),strip(row[2]),date,time)
+            nameValue = strip(row[4])
+            genreValue = strip(row[5])
+            return (subjectValue,titleValue,summaryValue,date,time,nameValue,genreValue)
          else:
             result = []
             for row in values:
+               subjectValue = strip(row[0])
+               titleValue = literal(row[1])
+               summaryValue = literal(row[2])
                date,time = strip(row[3]).split('T')
-               result.append((strip(row[0]),strip(row[1]),strip(row[2]),date,time))
+               nameValue = strip(row[4])
+               genreValue = strip(row[5])
+               result.append((subjectValue,titleValue,summaryValue,date,time,nameValue,genreValue))
             return result
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
-   def entityByOrder(self,value,entity = None,order = None,title = None,summary = None,resource = None, criteria = None):
-      return self.entityByValue(value,self.facet('order',order),entity=entity,order=order,title=title,summary=summary,resource=resource,criteria=criteria)
+   def entityByOrder(self,value,entity = None,order = None,title = None,summary = None,resource = None, criteria = None, name=None, genre=None):
+      return self.entityByValue(value,self.facet('order',order),entity=entity,order=order,title=title,summary=summary,resource=resource,criteria=criteria,name=name,genre=genre)
 
-   def entityByValue(self,value,facet,entity = None,order = None,title = None,summary = None,resource = None, criteria = None):
+   def entityByValue(self,value,facet,entity = None,order = None,title = None,summary = None,resource = None, criteria = None, name=None, genre=None):
       entityType = self.facet('type',entity)
       orderFacet = self.facet('order',order)
       titleFacet = self.facet('title',title)
       summaryFacet = self.facet('summary',summary)
-      expr = '?s {0} ?ordering; {1} ?title; {3} {4}. optional {{ ?s {2} ?summary . }}'.format(orderFacet,titleFacet,summaryFacet,facet,facet.toLiteral(value))
+      nameFacet = self.facet('name',name)
+      genreFacet = self.facet('genre',genre)
+      expr = '?s {0} ?ordering; {1} ?title; {3} {4}; {5} ?name; {6} ?genre . optional {{ ?s {2} ?summary . }}'.format(orderFacet,titleFacet,summaryFacet,facet,facet.toLiteral(value),nameFacet,genreFacet)
       if criteria is not None:
          expr = expr + criteriaConditions(self,criteria)
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['s','title','summary','ordering']) \
+            .select(['s','title','summary','ordering','name','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr)
       #print(q)
@@ -339,11 +364,13 @@ class Pond:
          if len(values)==0:
             return None
          subject = strip(values[0][0])
-         title = strip(values[0][1])
-         summary = strip(values[0][2])
+         title = literal(values[0][1])
+         summary = literal(values[0][2])
          dateTime = strip(values[0][3])
          date,time = dateTime.split('T') # Need to check that is xsd:dateTime
-         return (subject,title,summary,date,time)
+         nameValue = strip(values[0][4])
+         genreValue = strip(values[0][5])
+         return (subject,title,summary,date,time,nameValue,genreValue)
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
@@ -395,16 +422,18 @@ class Pond:
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
 
-   def getEntitiesByCategory(self,value,limit = 100,entity = None,category = None,title = None,summary = None,order = None,resource = None):
+   def getEntitiesByCategory(self,value,limit = 100,entity = None,category = None,title = None,summary = None,order = None,resource = None, name=None, genre=None):
       entityType = self.facet('type',entity)
       categoryFacet = self.facet('category',category)
       titleFacet = self.facet('title',title)
       summaryFacet = self.facet('summary',summary)
       orderFacet = self.facet('order',order)
-      expr = '?s rdf:type {0}; {1} ?title; {3} ?date; {4} {5} . optional {{ ?s {2} ?summary; }}'.format(entityType,titleFacet,summaryFacet,orderFacet,categoryFacet,categoryFacet.toLiteral(value))
+      nameFacet = self.facet('name',name)
+      genreFacet = self.facet('genre',genre)
+      expr = '?s rdf:type {0}; {1} ?title; {3} ?date; {4} {5}; {6} ?name; {7} ?genre; . optional {{ ?s {2} ?summary; }}'.format(entityType,titleFacet,summaryFacet,orderFacet,categoryFacet,categoryFacet.toLiteral(value),nameFacet,genreFacet)
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['s','title','summary','date']) \
+            .select(['s','title','summary','date','name','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr)
       params = self.mergeParameters({'limit':limit,'query':str(q)})
@@ -415,8 +444,13 @@ class Pond:
          data = json.loads(req.text)
          result = []
          for row in data['values']:
+            subjectValue = strip(row[0])
+            titleValue = literal(row[1])
+            summaryValue = literal(row[2])
             date,time = strip(row[3]).split('T')
-            result.append((strip(row[0]),strip(row[1]),strip(row[2]),date,time))
+            nameValue = strip(row[4])
+            genreValue = strip(row[5])
+            result.append((subjectValue,titleValue,summaryValue,date,time,nameValue,genreValue))
          return result
       else:
          raise IOError('Cannot post data to uri <{}>, status={}'.format(self.service,req.status_code))
