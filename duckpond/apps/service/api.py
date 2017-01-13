@@ -87,6 +87,9 @@ class Service:
       if graph is not None:
          uri = uri + "?context=" + urllib.parse.quote('<'+graph+'>')
 
+      if isinstance(data,str):
+         data = data.encode('utf-8')
+
       req = requests.put(uri,data=data,headers={'content-type':'text/turtle; charset=utf-8'},auth=self.auth)
 
       #print(req.status_code)
@@ -98,6 +101,9 @@ class Service:
       uri = self.endpoints['update']
       if graph is not None:
          uri = uri + "?context=" + urllib.parse.quote('<'+graph+'>')
+
+      if isinstance(data,str):
+         data = data.encode('utf-8')
 
       req = requests.post(uri,data=data,headers={'content-type':'text/turtle; charset=utf-8'},auth=self.auth)
 
@@ -371,7 +377,7 @@ def content():
          abort(401)
 
       # Parse the incoming JSON-LD data
-      force = request.headers['Content-Type'] == 'application/ld+json'
+      force = request.headers['Content-Type'].startswith('application/ld+json')
       data = request.get_json(force=force)
       if data is None:
          abort(400)
@@ -381,6 +387,16 @@ def content():
          abort(400)
 
       # Check to see if the name/genre already exists
+      q = SPARQL() \
+            .start({ 'schema' : 'http://schema.org/'}) \
+            .select(['url']) \
+            .where('?s schema:genre {}; schema:name {}; schema:url ?url'.format(value(data['genre']),value(data['name'])))
+      existing = service.query(q)
+      if len(existing['values'])>0:
+         url = uri(existing['values'][0][0])
+         id = url[url.rfind('/',0,-1)+1:-1]
+         location = app.config['LOCATION_TEMPLATE'].format(**{'id' : id})
+         return Response(status=409,headers={'Location' : location})
       if service.exists(ask({'genre' : data['genre'], 'name' : data['name']})):
          abort(409)
 
@@ -409,7 +425,7 @@ def content_item(id):
       # Replace triples
 
       # Parse the incoming JSON-LD data
-      force = request.headers['Content-Type'] == 'application/ld+json'
+      force = request.headers['Content-Type'].startswith('application/ld+json')
       data = request.get_json(force=force)
       if data is None:
          abort(400)
@@ -445,7 +461,7 @@ def content_item(id):
    if request.method == 'POST':
       if 'writer' not in request.roles:
          abort(401)
-      force = request.headers['Content-Type'] == 'application/ld+json'
+      force = request.headers['Content-Type'].startswith('application/ld+json')
       data = request.get_json(force=force)
       if data is None:
          abort(400)
