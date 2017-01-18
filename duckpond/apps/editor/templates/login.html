@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="uk-card uk-card-body">
+   <h1 class="uk-card-title">Please sign in:</h1>
+   <div  class="uk-form-horizontal">
+   <form action="" method="post" name="login">
+      {{ form.hidden_tag() }}
+      <div class="uk-margin">
+         <label class="uk-form-label" for="username" >Username</label>
+         <div class="uk-form-controls">
+            <input class="uk-input" value="{{form.username.data or ""}}" name="username" size="40">
+         </div>
+      </div>
+      <div class="uk-margin">
+         <label class="uk-form-label" for="password" >Password</label>
+         <div class="uk-form-controls">
+            <input class="uk-input" value="{{form.password.data or ""}}" name="password" type="password" size="40">
+         </div>
+      </div>
+      <div class="uk-margin">
+         <input type="submit" value="Login" class="uk-button">
+      </div>
+   </form>
+   </div>
+</div>
+{% endblock %}

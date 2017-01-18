@@ -1,0 +1,34 @@
+{
+  "@vocab" : "http://duckpond.io/",
+  "@context" : "http://schema.org/",
+  "properties" : [
+     { "name" : "name",          "label" : "Short name (url)", "value" : "string" },
+     { "name" : "headline",      "label" : "Title",            "value" : "string" },
+     { "name" : "decription",    "label" : "Description",      "value" : "html5", "occurrence" : "?"},
+     { "name" : "datePublished", "label" : "Published",        "value" : "datetime", "occurrence" : "?"},
+     { "name" : "dateModified",  "label" : "Modified",         "value" : "datetime", "occurrence" : "?" }
+     { "name" : "author",        "label" : "Author",           "value" : { "type" : "subject", "category" : "author"}, "occurrence" : "?" }
+     { "name" : "image",         "label" : "Thumbnail",        "value" : "media", "occurrence" : "?" }
+  ],
+  "types" : [
+     { "@type" : "Article",
+       "resource" : { "type" : "html5"}
+     },
+     { "@type" : "ImageGallery",
+       "properties" : [
+          { "name" : "associatedMedia", "label" : "Thumbnail", "value" : "media", "occurrence" : "+" }
+       ]
+     },
+     { "@type" : "VideoGallery",
+       "properties" : [
+          { "name" : "associatedMedia", "label" : "Thumbnail", "value" : "media", "occurrence" : "+" }
+       ]
+     },
+     { "@type" : "ImageObject",
+       "properties" : [
+          { "name" : "position", "label" : "Order", "value" : "integer", "occurrence" : "?" },
+          { "name" : "fileFormat", "label" : "Order", "value" : "integer", "occurrence" : "?" }
+       ]
+     }
+   ]
+}

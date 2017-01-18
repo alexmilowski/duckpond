@@ -1,0 +1,23 @@
+body {
+}
+#user-nav {
+   position: fixed;
+   top: 0px;
+   right: 1em;
+}
+
+body > header {
+   position: fixed;
+   top: 0px;
+   left: 0px;
+   padding-left: 1em;
+   width: 100%;
+   border-bottom: 1px solid rgb(200,200,200);
+}
+body > header > h1 {
+   margin-bottom: -0.1825em;
+}
+body > main {
+   clear: both;
+   margin-top: 3em;
+}

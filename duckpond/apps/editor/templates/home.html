@@ -1,0 +1,18 @@
+<!-- extend from base layout -->
+{% extends "base.html" %}
+
+{% block content %}
+<table class="uk-table">
+   <tr><th><a href="#" class="uk-icon-link" uk-icon="icon: plus" title="add content"></a></th><th>Genre</th><th>Name</th><th>Type</th><th>Headline</th><td></td></tr>
+  {% for work in works %}
+  <tr>
+     <td><a href="#" class="uk-icon-link" uk-icon="icon: file-edit" title="edit" data-url="{{work['url']|escape}}"></a></td>
+     <td>{{work['genre']}}</td>
+     <td>{{work['name']}}</td>
+     <td>{{work['@type']}}</td>
+     <td>{{work['headline']}}</td>
+     <td><a href="#" class="uk-icon-link" uk-icon="icon: trash" title="delete"></a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}
