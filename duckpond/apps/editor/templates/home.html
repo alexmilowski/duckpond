@@ -9,7 +9,6 @@
    <li class="uk-active">
       <a href="#">Content</a>
    </li>
-<li><a href="#">Other</a></li>
 </ul>
 
 <ul class="uk-switcher uk-margin">
@@ -49,23 +48,8 @@
    </div>
 </li>
 <li>
-<table class="uk-table">
-   <tr><th></th><th>Genre</th><th>Name</th><th>Type</th><th>Headline</th><td></td></tr>
-  {% for work in works %}
-  <tr data-url="{{work['url']|escape}}"
-      data-genre="{{work['genre']|escape}}"
-      data-name="{{work['name']|escape}}"
-      data-type="{{work['type']|escape}}"
-      data-headline="{{work['headline']|escape}}"
-     >
-     <td><a href="#" class="uk-icon-link editor-edit-content" uk-icon="icon: file-edit" title="edit"></a></td>
-     <td>{{work['genre']}}</td>
-     <td>{{work['name']}}</td>
-     <td>{{work['@type']}}</td>
-     <td>{{work['headline']}}</td>
-     <td><a href="#" class="uk-icon-link editor-delete-content" uk-icon="icon: trash" title="delete"></a></td>
-  </tr>
-  {% endfor %}
+<table id="editor-contents" class="uk-table">
+   <tr><th><a href="#" class="uk-icon-link editor-reload-content" uk-icon="icon: refresh" title="refresh"></a></th><th>Genre</th><th>Name</th><th>Type</th><th>Headline</th><td></td></tr>
 </table>
 </li>
 </ul>

@@ -1,9 +1,9 @@
 class DuckpondEditor {
-   constructor() {
-
+   constructor(client) {
+      this.client = client;
    }
 
-   init() {
+   bind() {
       $("#editor-create-content").click(
          (e) => {
             let genre = $("#editor-form-content-create").find("input[name=genre]").get(0);
@@ -41,20 +41,48 @@ class DuckpondEditor {
             }
          }
       );
-      $(".editor-edit-content").click(
+      $(".editor-reload-content").click(
          (e) => {
-            this.editContent($(e.currentTarget).closest("tr").get(0).dataset);
-         }
-      );
-      $(".editor-delete-content").click(
-         (e) => {
-            this.deleteContent($(e.currentTarget).closest("tr").get(0).dataset);
+            this.reloadContents();
          }
       );
    }
 
-   createContent() {
-      console.log("Add content");
+   reloadContents() {
+      this.client.getContents().then((contents) => {
+         console.log("Refreshing content display...")
+         $("#editor-contents .content-row").remove();
+         for (let content of contents) {
+            $("#editor-contents").append(
+               `<tr class="content-row"
+                    data-url="${content.url}"
+                    data-genre="${content.genre}"
+                    data-name="${content.name}"
+                    data-type="${content['@type']}"
+                    data-headline="${content.headline}">
+                <td><a href="#" class="uk-icon-link editor-edit-content" uk-icon="icon: file-edit" title="edit"></a></td>
+                <td>${content.genre}</td>
+                <td>${content.name}</td>
+                <td>${content['@type']}</td>
+                <td>${content.headline}</td>
+                <td><a href="#" class="uk-icon-link editor-delete-content" uk-icon="icon: trash" title="delete"></a></td>
+                </tr>`
+            )
+         }
+         $(".editor-edit-content").click(
+            (e) => {
+               this.editContent($(e.currentTarget).closest("tr").get(0).dataset);
+            }
+         );
+         $(".editor-delete-content").click(
+            (e) => {
+               this.deleteContent($(e.currentTarget).closest("tr").get(0).dataset);
+            }
+         );
+         console.log("Finished.")
+      }).catch((status) => {
+         console.log("Cannot load content, status "+status);
+      })
    }
 
    editContent(dataset) {
@@ -66,11 +94,40 @@ class DuckpondEditor {
       console.log("Delete content");
       console.log(dataset);
    }
+}
+
+class DuckpondClient {
+   constructor(service) {
+      this.service = service;
+   }
+
+   getContents() {
+      return new Promise((resolve,reject) => {
+         fetch(this.service + "content/").then(
+            (response) => {
+               if (response.ok) {
+                  response.json().then((data) => {
+                     resolve(data)
+                  });
+               } else {
+                  reject(response.status);
+               }
+            }
+         );
+      });
+   }
+
+   createContent() {
+   }
+
+   deleteContent(dataset) {
+   }
 
 }
 
-var app = new DuckpondEditor();
+var editor = new DuckpondEditor(new DuckpondClient("/data/"));
 
 $(document).ready(function() {
-   app.init();
+   editor.bind();
+   editor.reloadContents()
 })

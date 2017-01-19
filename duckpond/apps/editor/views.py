@@ -6,11 +6,9 @@ from . import model
 
 @app.route('/')
 def index():
-   works = model.getCreativeWorks()
    return render_template('home.html',
                            title='Duckpond Content Editor',
-                           username=session['username'],
-                           works=works)
+                           username=session['username'])
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
