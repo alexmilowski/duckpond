@@ -8,7 +8,7 @@ from . import model
 def index():
    works = model.getCreativeWorks()
    return render_template('home.html',
-                           title='Editor',
+                           title='Duckpond Content Editor',
                            username=session['username'],
                            works=works)
 
