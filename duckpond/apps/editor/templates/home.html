@@ -2,17 +2,72 @@
 {% extends "base.html" %}
 
 {% block content %}
+<ul id="edtior-content-tabs" uk-tab>
+   <li>
+      <a href="#" title="add content"><span class="uk-icon-link" uk-icon="icon: plus"></a>
+   </li>
+   <li class="uk-active">
+      <a href="#">Content</a>
+   </li>
+<li><a href="#">Other</a></li>
+</ul>
+
+<ul class="uk-switcher uk-margin">
+<li>
+   <div id="editor-form-content-create" class="uk-card uk-margin-left uk-margin-right uk-form-horizontal">
+      <h1 class="uk-card-title">Create</h1>
+      <div class="uk-margin">
+         <label class="uk-form-label" for="genre" >Genre</label>
+         <div class="uk-form-controls">
+            <input class="uk-input" value="" name="genre" size="40">
+         </div>
+      </div>
+      <div class="uk-margin">
+         <label class="uk-form-label" for="name" >Name</label>
+         <div class="uk-form-controls">
+            <input class="uk-input" value="" name="name" size="40">
+         </div>
+      </div>
+      <div class="uk-margin">
+         <label class="uk-form-label" for="type" >Type</label>
+         <div class="uk-form-controls">
+            <select class="uk-select" name="type-select">
+                <option>Custom</option>
+                <option>ImageObject</option>
+                <option>Article</option>
+            </select>
+            <input class="uk-input" value="" name="type-custom" size="40">
+         </div>
+      </div>
+      <div class="uk-margin">
+         <label class="uk-form-label" for="title" >Title</label>
+         <div class="uk-form-controls">
+            <input class="uk-input" value="" name="title" size="40">
+         </div>
+      </div>
+      <button class="uk-button uk-button-default" id="editor-create-content">Create</button>
+   </div>
+</li>
+<li>
 <table class="uk-table">
-   <tr><th><a href="#" class="uk-icon-link" uk-icon="icon: plus" title="add content"></a></th><th>Genre</th><th>Name</th><th>Type</th><th>Headline</th><td></td></tr>
+   <tr><th></th><th>Genre</th><th>Name</th><th>Type</th><th>Headline</th><td></td></tr>
   {% for work in works %}
-  <tr>
-     <td><a href="#" class="uk-icon-link" uk-icon="icon: file-edit" title="edit" data-url="{{work['url']|escape}}"></a></td>
+  <tr data-url="{{work['url']|escape}}"
+      data-genre="{{work['genre']|escape}}"
+      data-name="{{work['name']|escape}}"
+      data-type="{{work['type']|escape}}"
+      data-headline="{{work['headline']|escape}}"
+     >
+     <td><a href="#" class="uk-icon-link editor-edit-content" uk-icon="icon: file-edit" title="edit"></a></td>
      <td>{{work['genre']}}</td>
      <td>{{work['name']}}</td>
      <td>{{work['@type']}}</td>
      <td>{{work['headline']}}</td>
-     <td><a href="#" class="uk-icon-link" uk-icon="icon: trash" title="delete"></a></td>
+     <td><a href="#" class="uk-icon-link editor-delete-content" uk-icon="icon: trash" title="delete"></a></td>
   </tr>
   {% endfor %}
 </table>
+</li>
+</ul>
+
 {% endblock %}
