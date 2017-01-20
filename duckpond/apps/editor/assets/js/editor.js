@@ -48,6 +48,16 @@ class DuckpondEditor {
       );
    }
 
+   error(message) {
+      this.notify("Woah!",message);
+   }
+
+   notify(title,message) {
+      $("#editor-notify-title").text(title)
+      $("#editor-notify-message").text(message)
+      UIkit.modal("#editor-notify")[0].toggle()
+   }
+
    reloadContents() {
       this.client.getContents().then((contents) => {
          console.log("Refreshing content display...")
@@ -82,7 +92,7 @@ class DuckpondEditor {
          );
          console.log("Finished.")
       }).catch((status) => {
-         console.log("Cannot load content, status "+status);
+         this.error(`Cannot load content, status ${status}`);
       })
    }
 
@@ -120,12 +130,16 @@ class DuckpondEditor {
                   this.deleteContent(row,row.dataset);
                }
             );
-            
+
             // Switch to the content tab
             UIkit.switcher("#editor-content-tabs")[0].show(1);
          })
          .catch((status) => {
-            console.log(`Cannot create content, status ${status}`)
+            if (status==409) {
+               this.notify("Conflicting Content",`A content item with genre "${genre}" and name "${name}" already exists`);
+            } else {
+               this.error(`Cannot create content, status ${status}`);
+            }
          });
 
    }
@@ -146,10 +160,14 @@ class DuckpondEditor {
                $(row).remove();
             })
             .catch((status) => {
-               console.log(`Cannot delete content ${idMatch[1]}, status ${status}`);
+               if (status==404) {
+                  $(row).remove();
+               } else {
+                  this.error(`Cannot delete content ${idMatch[1]}, status ${status}`);
+               }
             })
       } else {
-         console.log(`Cannot parse content URI ${dataset.url}`);
+         this.error(`Cannot parse content URI ${dataset.url}`);
       }
    }
 }
