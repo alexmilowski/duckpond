@@ -90,6 +90,7 @@ class DuckpondEditor {
       this.client.createContent(typeName,genre,name,title)
          .then((location) => {
             console.log(location)
+            // Create the row
             let row = $(
                `<tr class="content-row"
                     data-url="${location}"
@@ -106,6 +107,8 @@ class DuckpondEditor {
                 </tr>`
             );
             $("#editor-contents").append(row)
+
+            // Attach the actions for the row
             row.find(".editor-edit-content").click(
                (e) => {
                   this.editContent($(e.currentTarget).closest("tr").get(0).dataset);
@@ -117,6 +120,9 @@ class DuckpondEditor {
                   this.deleteContent(row,row.dataset);
                }
             );
+            
+            // Switch to the content tab
+            UIkit.switcher("#editor-content-tabs")[0].show(1);
          })
          .catch((status) => {
             console.log(`Cannot create content, status ${status}`)
