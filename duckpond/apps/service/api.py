@@ -2,6 +2,8 @@ import io,json
 import requests
 import urllib
 import uuid
+from datetime import datetime
+from pytz import timezone
 from enum import Enum
 from flask import render_template, redirect, request, url_for, escape, flash, g, abort, make_response, Response, stream_with_context
 from .app import app
@@ -254,25 +256,6 @@ class TurtleSerializer:
          first = False
       self.output.write(']')
 
-#def toTurtle(subject,data):
-#   turtle = io.StringIO()
-#   turtle.write('@prefix schema: <http://schema.org/> .\n')
-#   turtle.write('<' + subject + '>\n')
-#   if '@type' in data:
-#      turtle.write('  a ' + curie(data['@type'] + ';\n'))
-#   first = True
-#   for name in data:
-#      if name == '@context' or name=='@type' or name=='@id':
-#         continue;
-#      if not first:
-#         turtle.write(';\n')
-#      turtle.write('  {0} {1}'.format(curie(name),value(data[name],url=name=='url')))
-#      first = False
-#   turtle.write('.\n')
-#   s = turtle.getvalue()
-#   turtle.close()
-#   return s
-
 def ask(data):
    turtle = io.StringIO()
    turtle.write('PREFIX schema: <http://schema.org/>\n')
@@ -312,6 +295,9 @@ def toJSONLD(subject,quads):
          obj[shorten(p)] = literal(uri(o))
 
    return objs[subject] if subject in objs else None
+
+def now():
+   return datetime.now(tz=timezone(app.config['TIMEZONE'] if 'TIMEZONE' in app.config else 'UTC')).isoformat()
 
 def contentSubject(url):
    service = app.config['UPDATE_SERVICE']
@@ -443,6 +429,7 @@ def content_item(id):
 
       subject = app.config['SUBJECT_TEMPLATE'].format(**data)
       data['url'] = url
+      data['dateModified'] = now()
 
       turtle = TurtleSerializer()
       turtle.start()
@@ -471,6 +458,8 @@ def content_item(id):
          'genre' in data:
          abort(400)
 
+      data['dateModified'] = now()
+      
       # Add triples
       turtle = TurtleSerializer()
       turtle.start()
