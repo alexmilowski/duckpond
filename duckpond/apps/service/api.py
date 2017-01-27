@@ -391,6 +391,7 @@ def content():
       url = app.config['RESOURCE_TEMPLATE'].format(**{'id' : id})
       location = app.config['LOCATION_TEMPLATE'].format(**{'id' : id})
       data['url'] = url
+      data['dateModified'] = now()
 
       turtle = TurtleSerializer()
       turtle.start()
@@ -459,7 +460,7 @@ def content_item(id):
          abort(400)
 
       data['dateModified'] = now()
-      
+
       # Add triples
       turtle = TurtleSerializer()
       turtle.start()
