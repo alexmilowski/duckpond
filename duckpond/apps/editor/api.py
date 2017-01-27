@@ -32,9 +32,8 @@ def content():
 def content_item(id):
 
    if request.method == 'GET':
-      status = model.getContent(id)
-      return Response(status=status)
-      abort(400)
+      content = model.getContent(id)
+      return jsonld_response(json.dumps(content))
 
    if request.method == 'POST':
       abort(400)

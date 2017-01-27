@@ -222,6 +222,12 @@ class DuckpondEditor {
       );
       //tabContent.find(".editor-content-item")
       this.client.getContent(id)
+         .then((data) => {
+            console.log(data);
+         })
+         .catch((status) => {
+            this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+         })
    }
 
    deleteContent(row,dataset) {
