@@ -292,7 +292,15 @@ def toJSONLD(subject,quads):
       if p=='http://www.w3.org/1999/02/22-rdf-syntax-ns#type':
          obj['@type'] = shorten(uri(o))
       else:
-         obj[shorten(p)] = literal(uri(o))
+         name = shorten(p)
+         value = literal(uri(o))
+         if name in obj:
+            if type(obj[name])!=list:
+               l = [obj[name]]
+               obj[name] = l
+            obj[name].append(value)
+         else:
+            obj[name] = value
 
    return objs[subject] if subject in objs else None
 
