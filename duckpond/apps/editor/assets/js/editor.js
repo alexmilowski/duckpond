@@ -1,3 +1,20 @@
+function SafeHTML(templateData) {
+  var s = templateData[0];
+  for (var i = 1; i < arguments.length; i++) {
+    var arg = String(arguments[i]);
+
+    // Escape special characters in the substitution.
+    s += arg.replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+
+    // Don't escape special characters in the template.
+    s += templateData[i];
+  }
+  return s;
+}
+
 class DuckpondEditor {
    constructor(client) {
       this.client = client;
@@ -61,9 +78,9 @@ class DuckpondEditor {
    reloadContents() {
       this.client.getContents().then((contents) => {
          console.log("Refreshing content display...")
-         $("#editor-contents .content-row").remove();
+         $("#editor-content-list .content-row").remove();
          for (let content of contents) {
-            $("#editor-contents").append(
+            $("#editor-content-list").append(
                `<tr class="content-row"
                     data-url="${content.url}"
                     data-genre="${content.genre}"
@@ -102,7 +119,7 @@ class DuckpondEditor {
             console.log(location)
             // Create the row
             let row = $(
-               `<tr class="content-row"
+               SafeHTML`<tr class="content-row"
                     data-url="${location}"
                     data-genre="${genre}"
                     data-name="${name}"
@@ -116,7 +133,7 @@ class DuckpondEditor {
                 <td><a href="#" class="uk-icon-link editor-delete-content" uk-icon="icon: trash" title="delete"></a></td>
                 </tr>`
             );
-            $("#editor-contents").append(row)
+            $("#editor-content-list").append(row)
 
             // Attach the actions for the row
             row.find(".editor-edit-content").click(
@@ -144,31 +161,89 @@ class DuckpondEditor {
 
    }
 
+   contentIdFromURL(url) {
+      let idMatch = url.match(/\/([^\/]+)\/$/);
+      if (!idMatch) {
+         return undefined;
+      }
+      return idMatch[1];
+   }
+
    editContent(dataset) {
-      console.log("Edit content");
-      console.log(dataset);
+      let id = this.contentIdFromURL(dataset.url);
+      if (!id) {
+         this.error(`Cannot parse content URI ${dataset.url}`);
+         return;
+      }
+
+      let found = false;
+      $("#editor-content-tabs li").each((i,tab) => {
+         if (tab.dataset['url']==dataset['url']) {
+            UIkit.switcher("#editor-content-tabs")[0].show(i);
+            found = true;
+         }
+      })
+      if (found) return;
+
+      let tabContent = $(
+         SafeHTML`<li data-url="${dataset.url}">
+            <ul class="uk-iconnav uk-iconnav-vertical editor-content-item-menu">
+               <li><a href="#" uk-icon="icon: close" title="Close" class="editor-content-item-close"></a></li>
+               <li><a href="#" uk-icon="icon: refresh" title="Refresh" class="editor-content-item-refresh"></a></li>
+               <li><a href="#" uk-icon="icon: push" title="Save" class="editor-content-item-save"></a></li>
+            </ul>
+            <div class="editor-content-item">
+               <p>Loading ...</p>
+            </div>
+         </li>`
+      );
+      let tab = $(
+         SafeHTML`<li data-url="${dataset.url}"><a href="#" title="${dataset.headline}">${dataset.genre} / ${dataset.name}</a></li>`
+      );
+      let tabIndex = $("#editor-content-tabs li").length;
+      $("#editor-content-tabs").append(tab);
+      $("#editor-content").append(tabContent);
+      tabContent.find(".editor-content-item-close").click((e) => {
+         tab.remove();
+         tabContent.remove();
+         UIkit.switcher("#editor-content-tabs")[0].show(tabIndex-1);
+      });
+      tabContent.find(".editor-content-item-refresh").click((e) => {
+
+      });
+      tabContent.find(".editor-content-item-save").click((e) => {
+
+      });
+      setTimeout(
+         () => {
+            UIkit.switcher("#editor-content-tabs")[0].show(tabIndex);
+         },
+         50
+      );
+      //tabContent.find(".editor-content-item")
+      this.client.getContent(id)
    }
 
    deleteContent(row,dataset) {
       console.log("Delete content");
-      let idMatch = dataset.url.match(/\/([^\/]+)\/$/);
-      if (idMatch) {
-         console.log(`Deleting ${idMatch[1]}`);
-         this.client.deleteContent(idMatch[1])
-            .then(() => {
-               console.log("Success!");
-               $(row).remove();
-            })
-            .catch((status) => {
-               if (status==404) {
-                  $(row).remove();
-               } else {
-                  this.error(`Cannot delete content ${idMatch[1]}, status ${status}`);
-               }
-            })
-      } else {
+      let id = this.contentIdFromURL(dataset.url);
+      if (!id) {
          this.error(`Cannot parse content URI ${dataset.url}`);
+         return;
       }
+      console.log(`Deleting ${id}`);
+      this.client.deleteContent(id)
+         .then(() => {
+            console.log("Success!");
+            $(row).remove();
+         })
+         .catch((status) => {
+            if (status==404) {
+               $(row).remove();
+            } else {
+               this.error(`Cannot delete content ${idMatch[1]}, status ${status}`);
+            }
+         })
    }
 }
 
@@ -237,6 +312,23 @@ class DuckpondClient {
 
       });
    }
+
+   getContent(id) {
+      return new Promise((resolve,reject) => {
+         fetch(this.service + "content/" + id + "/").then(
+            (response) => {
+               if (response.ok) {
+                  response.json().then((data) => {
+                     resolve(data)
+                  });
+               } else {
+                  reject(response.status);
+               }
+            }
+         );
+      });
+   }
+
 
 }
 

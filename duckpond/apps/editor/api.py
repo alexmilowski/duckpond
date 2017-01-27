@@ -11,7 +11,7 @@ def jsonld_response(data):
 @app.route('/data/content/',methods=['GET','POST'])
 def content():
    if request.method == 'GET':
-      works = model.getCreativeWorks()
+      works = model.getContentList()
       return jsonld_response(json.dumps(works))
 
    if request.method == 'POST':
@@ -32,6 +32,8 @@ def content():
 def content_item(id):
 
    if request.method == 'GET':
+      status = model.getContent(id)
+      return Response(status=status)
       abort(400)
 
    if request.method == 'POST':

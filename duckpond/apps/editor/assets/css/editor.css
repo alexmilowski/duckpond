@@ -44,3 +44,13 @@ body > main {
 #editor-form-content-create .uk-input[name=type-custom] {
    width: 30em;
 }
+
+.editor-content-item-menu {
+   float: left;
+   padding-left: 0.25em;
+   width: 1.5em;
+}
+
+.editor-content-item {
+   margin-left: 3em;
+}

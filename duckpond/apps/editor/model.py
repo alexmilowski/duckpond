@@ -7,11 +7,11 @@ def getAuth():
    user = app.config['AUTH_SERVICE'].getUser(session['username'])
    return requests.auth.HTTPBasicAuth(user['username'], user['password'])
 
-def getCreativeWorks():
+def getContentList():
    url = app.config['SERVICE'] + 'content/'
    req = requests.get(url,auth=getAuth())
    if req.status_code!=200:
-      raise IOError("Cannot access service, status " + str(req.status_code))
+      raise IOError('Cannot get content list from service, status {status}'.format(**{'status':req.status_code}))
    return json.loads(req.text)
 
 def createContent(typeName,genre,name,headline):
@@ -35,3 +35,11 @@ def deleteContent(id):
    url = app.config['SERVICE'] + 'content/' + id + '/'
    response = requests.delete(url,auth=getAuth())
    return response.status_code
+
+def getContent(id):
+   url = app.config['SERVICE'] + 'content/' + id + '/'
+   response = requests.get(url,auth=getAuth())
+   if response.status_code==200:
+      return json.loads(response.text)
+   else:
+      raise IOError('Cannot get content {id} from service, status {status}'.format(**{'status':response.status_code,'id':id}))
