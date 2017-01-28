@@ -277,8 +277,9 @@ def ask(data):
    return s
 
 def toJSONLD(subject,quads):
-   objs = { subject : { '@context' : 'http://schema.org/'}}
+   objs = { subject : { '@context' : 'http://schema.org/', '@id' : subject}}
 
+   toResolve = []
    for quad in quads:
       s = uri(quad[0])
       p = uri(quad[1])
@@ -287,14 +288,16 @@ def toJSONLD(subject,quads):
       if s in objs:
          obj = objs[s]
       else:
-         obj = {}
+         obj = {'@id' : s}
          objs[s] = obj
       if p=='http://www.w3.org/1999/02/22-rdf-syntax-ns#type':
          obj['@type'] = shorten(uri(o))
       else:
          name = shorten(p)
          value = literal(uri(o))
-         if name in obj:
+         if name=='hasPart' or name=='associatedMedia':
+            toResolve.append({ 'subject': obj, 'property': name, 'id': value})
+         elif name in obj:
             if type(obj[name])!=list:
                l = [obj[name]]
                obj[name] = l
@@ -302,6 +305,23 @@ def toJSONLD(subject,quads):
          else:
             obj[name] = value
 
+   for resolve in toResolve:
+      name = resolve['property']
+      target = resolve['subject']
+      value = objs[resolve['id']]
+      if value is None:
+         continue
+      if name=='hasPart' or name=='associatedMedia':
+         if name not in target:
+            target[name] = []
+         target[name].append(value)
+      elif name in target:
+         if type(target[name])!=list:
+            l = [target[name]]
+            target[name] = l
+         target[name].append(value)
+      else:
+         target[name] = value
    return objs[subject] if subject in objs else None
 
 def now():
