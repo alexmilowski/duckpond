@@ -18,6 +18,15 @@ function SafeHTML(templateData) {
 class DuckpondEditor {
    constructor(client) {
       this.client = client;
+      this.content = {};
+      this.inputTypes = {
+         "description": "textarea"
+      }
+   }
+
+   inputTypeFor(property) {
+      let type = this.inputTypes[property];
+      return type==undefined ? "input" : type;
    }
 
    bind() {
@@ -186,19 +195,19 @@ class DuckpondEditor {
       if (found) return;
 
       let tabContent = $(
-         SafeHTML`<li data-url="${dataset.url}">
+         SafeHTML`<li data-url="${dataset.url}" class="editor-content-tab-item">
             <ul class="uk-iconnav uk-iconnav-vertical editor-content-item-menu">
                <li><a href="#" uk-icon="icon: close" title="Close" class="editor-content-item-close"></a></li>
                <li><a href="#" uk-icon="icon: refresh" title="Refresh" class="editor-content-item-refresh"></a></li>
                <li><a href="#" uk-icon="icon: push" title="Save" class="editor-content-item-save"></a></li>
             </ul>
-            <div class="editor-content-item">
+            <div class="editor-content-item" id="content-item-${id}">
                <p>Loading ...</p>
             </div>
          </li>`
       );
       let tab = $(
-         SafeHTML`<li data-url="${dataset.url}"><a href="#" title="${dataset.headline}">${dataset.genre} / ${dataset.name}</a></li>`
+         SafeHTML`<li data-url="${dataset.url}" class="editor-content-tab"><a href="#" title="${dataset.headline}">${dataset.genre} / ${dataset.name}</a></li>`
       );
       let tabIndex = $("#editor-content-tabs li").length;
       $("#editor-content-tabs").append(tab);
@@ -224,33 +233,250 @@ class DuckpondEditor {
       this.client.getContent(id)
          .then((data) => {
             console.log(data);
+            this.addContentEdit(id,data,tabContent)
          })
          .catch((status) => {
             this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
          })
    }
 
-   deleteContent(row,dataset) {
-      console.log("Delete content");
-      let id = this.contentIdFromURL(dataset.url);
-      if (!id) {
-         this.error(`Cannot parse content URI ${dataset.url}`);
-         return;
-      }
-      console.log(`Deleting ${id}`);
-      this.client.deleteContent(id)
-         .then(() => {
-            console.log("Success!");
-            $(row).remove();
-         })
-         .catch((status) => {
-            if (status==404) {
-               $(row).remove();
+   addContentEdit(id,data,tabContent) {
+      let info = {
+         id : id,
+         ld : data,
+         ui : tabContent,
+         parts : [],
+         media : []
+      };
+      this.content[id] = info;
+      let contentItem = tabContent.find(".editor-content-item");
+      contentItem.find("*").remove();
+      contentItem.append($(SafeHTML`
+         <div class="uk-card uk-card-default uk-card-body">
+         <h3><span>${data["@type"]}</span></h3>
+         <p>modified ${data["dateModified"]}</p>
+         </div>`));
+      let properties = $(SafeHTML`
+         <div class="uk-card uk-card-default uk-card-body uk-margin">
+         <h3 class="uk-heading-line"><span>Properties</span></h3>
+         <div></div>
+         </div>`);
+      contentItem.append(properties);
+      let propertiesBody = properties.find("div");
+      for (let property of Object.keys(data)) {
+         if (property=="@context" || property=="@id" || property=="@type" || property=="dateModified" || property=="url" || property=="author") {
+            continue;
+         } else if (property=="hasPart"){
+            info.parts = data[property]
+         } else if (property=="associatedMedia"){
+            info.media = data[property]
+         } else {
+            let inputType = this.inputTypeFor(property);
+            if (inputType=="textarea") {
+               let row = $(SafeHTML`
+                  <div class="uk-margin">
+                     <label class="uk-form-label" for="${property}" >${property}</label>
+                     <div class="uk-form-controls">
+                        <textarea class="uk-textarea" name="${property}" cols="40" rows="5">${data[property]}</textarea>
+                     </div>
+                  </div>`);
+               propertiesBody.append(row);
             } else {
-               this.error(`Cannot delete content ${idMatch[1]}, status ${status}`);
+               let row = $(SafeHTML`
+                  <div class="uk-margin">
+                     <label class="uk-form-label" for="${property}" >${property}</label>
+                     <div class="uk-form-controls">
+                        <input class="uk-input" value="${data[property]}" name="${property}" size="40">
+                     </div>
+                  </div>`);
+               propertiesBody.append(row);
             }
+         }
+      }
+      let footer = $(SafeHTML`
+         <div class="uk-child-width-expand uk-margin" uk-grid>
+           <div>
+             <div class="uk-card uk-card-default uk-card-body">
+             <h3 class="uk-heading-line"><span>Parts</span></h3>
+             <ul class="uk-list editor-content-parts">
+             </ul>
+             <ul class="uk-iconnav editor-content-part-menu">
+             <li><a href="#" uk-icon="icon: plus" title="Add Part" class="editor-content-part-add"></a></li>
+             </ul>
+             </div>
+           </div>
+           <div>
+             <div class="uk-card uk-card-default uk-card-body">
+             <h3 class="uk-heading-line"><span>Media</span></h3>
+             <ul class="uk-list editor-content-media">
+             </ul>
+             <div class="editor-content-media-add uk-placeholder uk-text-center">
+               <span uk-icon="icon: cloud-upload"></span>
+               <span class="uk-text-middle">Add media by dropping them here or</span>
+               <div uk-form-custom>
+                 <input type="file">
+                 <span class="uk-link">selecting one</span>
+               </div>
+             </div>
+             <progress class="editor-content-media-add-progress" class="uk-progress" value="0" max="100" hidden></progress>
+           </div>
+         </div>`);
+      contentItem.append(footer);
+      footer.find(".editor-content-part-add").click(() => {
+         console.log("Add part");
+         console.log(info);
+         return false;
+      })
+
+      let bar = footer.find(".editor-content-media-add-progress")[0];
+      UIkit.upload(`#content-item-${info.id} .editor-content-media-add`,{
+         url : this.client.service + "content/" + info.id + "/upload/associatedMedia",
+         multiple: false,
+         name: "file",
+         beforeSend: function() { console.log('beforeSend', arguments); },
+         beforeAll: function() { console.log('beforeAll', arguments); },
+         load: function() { console.log('load', arguments); },
+         error: function() { console.log('error', arguments); },
+         complete: function() { console.log('complete', arguments); },
+         loadStart: function (e) {
+            console.log('loadStart', arguments);
+
+            bar.removeAttribute('hidden');
+            bar.max =  e.total;
+            bar.value =  e.loaded;
+         },
+         progress: function (e) {
+            console.log('progress', arguments);
+
+            bar.max =  e.total;
+            bar.value =  e.loaded;
+         },
+         loadEnd: function (e) {
+            console.log('loadEnd', arguments);
+
+            bar.max =  e.total;
+            bar.value =  e.loaded;
+         },
+         completeAll: function () {
+            console.log('completeAll', arguments);
+
+            setTimeout(function () {
+               bar.setAttribute('hidden', 'hidden');
+            }, 1000);
+
+            alert('Upload Completed');
+         }
+      });
+
+      let contentPartList = footer.find(".editor-content-parts");
+      for (let part of info.parts) {
+         let item = $(SafeHTML`
+            <li>${part["name"]}; ${part["fileFormat"]}
+               <a href="#" uk-icon="icon: file-edit" title="Edit Part" class="uk-icon-link editor-content-part-edit"></a>
+               <a href="#" uk-icon="icon: trash" title="Delete Part" class="uk-icon-link editor-content-part-delete"></a>
+            </li>
+         `);
+         contentPartList.append(item);
+         item.find(".editor-content-part-edit").click(() => {
+            console.log("Edit Part");
+            console.log(part);
+            console.log(info);
+            return false;
+         });
+         item.find(".editor-content-part-delete").click(() => {
+            console.log("Delete Part");
+            console.log(part);
+            console.log(info);
+            setTimeout(() => {
+               UIkit.modal.confirm(`Are you sure you want to delete ${part["name"]}?`)
+                  .then(
+                     () => {
+                        console.log(`Deleting ${part["name"]} ...`);
+                     }
+                  )
+            },25);
+            return false;
+         });
+      }
+      let contentMediaList = footer.find(".editor-content-media");
+      for (let media of info.media) {
+         let item = $(SafeHTML`
+            <li>${media["name"]}; ${media["fileFormat"]}
+               <a href="#" uk-icon="icon: cloud-upload" title="Upload Media" class="uk-icon-link editor-content-media-upload"></a>
+               <a href="#" uk-icon="icon: trash" title="Delete Media" class="uk-icon-link editor-content-media-delete"></a>
+            </li>
+         `);
+         contentMediaList.append(item);
+         item.find(".editor-content-media-upload").click(() => {
+            console.log("Upload Media (Replace)");
+            console.log(media);
+            console.log(info);
+            return false;
+         });
+         item.find(".editor-content-media-delete").click(() => {
+            console.log("Delete Media");
+            console.log(media);
+            console.log(info);
+            setTimeout(() => {
+               this.deleteContentMediaResource(item,info,media);
+            },25);
+            return false;
+         });
+      }
+   }
+
+   deleteContent(row,dataset) {
+      UIkit.modal.confirm(`Are you sure you want to delete ${dataset["genre"]}/${dataset["name"]}?`)
+         .then(
+            () => {
+               console.log("Delete content");
+               let id = this.contentIdFromURL(dataset.url);
+               if (!id) {
+                  this.error(`Cannot parse content URI ${dataset.url}`);
+                  return;
+               }
+               console.log(`Deleting ${id}`);
+               this.client.deleteContent(id)
+                  .then(() => {
+                     console.log("Success!");
+                     $(row).remove();
+                  })
+                  .catch((status) => {
+                     if (status==404) {
+                        $(row).remove();
+                     } else {
+                        this.error(`Cannot delete content ${idMatch[1]}, status ${status}`);
+                     }
+                  });
          })
    }
+
+   deleteContentMediaResource(item,info,media) {
+      UIkit.modal.confirm(`Are you sure you want to delete ${media["name"]}?`)
+         .then(
+            () => {
+               console.log(`Deleting ${media["name"]}`);
+               this.client.deleteContentResource(info.id,media["name"])
+                  .then(() => {
+                     console.log("Success!");
+                     $(item).remove();
+                     for (let i=0; i<info.media.length; i++) {
+                        if (info.media[i].name==media.name) {
+                           info.media.splice(i,1)
+                           break;
+                        }
+                     }
+                  })
+                  .catch((status) => {
+                     if (status==404) {
+                        $(item).remove();
+                     } else {
+                        this.error(`Cannot delete resource ${media["name"]}, status ${status}`);
+                     }
+                  });
+         })
+   }
+
 }
 
 class DuckpondClient {
@@ -335,6 +561,22 @@ class DuckpondClient {
       });
    }
 
+   deleteContentResource(id,name) {
+      return new Promise((resolve,reject) => {
+         fetch(this.service + "content/" + id + "/" + name,{
+             method: 'delete'
+          }).then(
+             (response) => {
+                if (response.ok) {
+                   resolve();
+                } else {
+                   reject(response.status);
+                }
+             }
+          )
+
+      });
+   }
 
 }
 

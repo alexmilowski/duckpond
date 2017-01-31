@@ -1,4 +1,5 @@
 import json
+import os
 from flask import make_response, request, Response
 from .app import app
 from . import model
@@ -44,3 +45,27 @@ def content_item(id):
    if request.method == 'DELETE':
       status = model.deleteContent(id)
       return Response(status=status)
+
+@app.route('/data/content/<id>/<resource>',methods=['DELETE'])
+def content_item_resource(id,resource):
+   status = model.deleteContentResource(id,resource)
+   return Response(status=status)
+
+
+@app.route('/data/content/<id>/upload/<property>',methods=['POST'])
+def content_item_resource_upload(id,property):
+   #print(request.headers['Content-Type'])
+   #print(request.files)
+   file = request.files['file']
+   print(file.filename)
+   print(file.content_type)
+   print(file.content_length)
+   uploadDir = app.config['UPLOAD_STAGING'] if 'UPLOAD_STAGING' in app.config else 'tmp'
+   os.makedirs(uploadDir,exist_ok=True)
+   staged = os.path.join(uploadDir, file.filename)
+   file.save(staged)
+   status = 500
+   with open(staged,"rb") as data:
+      status = model.uploadContentResource(id,property,file.filename,file.content_type,os.path.getsize(staged),data)
+   os.unlink(staged)
+   return Response(status=status)

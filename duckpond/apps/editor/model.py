@@ -43,3 +43,14 @@ def getContent(id):
       return json.loads(response.text)
    else:
       raise IOError('Cannot get content {id} from service, status {status}'.format(**{'status':response.status_code,'id':id}))
+
+def uploadContentResource(id,property,name,content_type,content_length,data):
+   url = app.config['SERVICE'] + 'content/' + id + '/' + name + ";" + property
+   headers = {'Content-Type' : content_type, 'Content-Length' : content_length}
+   response = requests.put(url,auth=getAuth(),data=data,headers=headers)
+   return response.status_code
+
+def deleteContentResource(id,name):
+   url = app.config['SERVICE'] + 'content/' + id + '/' + name
+   response = requests.delete(url,auth=getAuth())
+   return response.status_code
