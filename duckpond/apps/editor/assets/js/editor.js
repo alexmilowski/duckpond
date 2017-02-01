@@ -15,6 +15,24 @@ function SafeHTML(templateData) {
   return s;
 }
 
+function localDateTime() {
+    var now = new Date(),
+        tzo = -now.getTimezoneOffset(),
+        dif = tzo >= 0 ? '+' : '-',
+        pad = function(num) {
+            var norm = Math.abs(Math.floor(num));
+            return (norm < 10 ? '0' : '') + norm;
+        };
+    return now.getFullYear()
+        + '-' + pad(now.getMonth()+1)
+        + '-' + pad(now.getDate())
+        + 'T' + pad(now.getHours())
+        + ':' + pad(now.getMinutes())
+        + ':' + pad(now.getSeconds())
+        + dif + pad(tzo / 60)
+        + ':' + pad(tzo % 60);
+}
+
 class DuckpondEditor {
    constructor(client) {
       this.client = client;
@@ -226,7 +244,16 @@ class DuckpondEditor {
          UIkit.switcher("#editor-content-tabs")[0].show(tabIndex-1);
       });
       tabContent.find(".editor-content-item-refresh").click((e) => {
-
+         let contentItem = tabContent.find(".editor-content-item");
+         this.client.getContent(id)
+            .then((data) => {
+               console.log(data);
+               contentItem.empty();
+               this.addContentEdit(id,data,tabContent)
+            })
+            .catch((status) => {
+               this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+            })
       });
       tabContent.find(".editor-content-item-save").click((e) => {
 
@@ -248,6 +275,12 @@ class DuckpondEditor {
          })
    }
 
+   updateModified(item,dateModified) {
+      let [date,time] = dateModified.split("T");
+      $(item).find(".editor-property-date-modified").text(date);
+      $(item).find(".editor-property-time-modified").text(time);
+   }
+
    addContentEdit(id,data,tabContent) {
       let info = {
          id : id,
@@ -258,18 +291,74 @@ class DuckpondEditor {
       this.content[id] = info;
       let contentItem = tabContent.find(".editor-content-item");
       contentItem.find("*").remove();
-      contentItem.append($(SafeHTML`
+      let header = $(SafeHTML`
          <div class="uk-card uk-card-default uk-card-body">
-         <h3><span>${data["@type"]}</span></h3>
-         <p>modified ${data["dateModified"]}</p>
-         </div>`));
+         <h3 class="uk-heading-line"><span>${data["@type"]}</span></h3>
+         <p>modified on <span class="editor-property-date-modified"></span> at <span class="editor-property-time-modified"></span></p>
+         </div>`)
+      contentItem.append(header);
+      this.updateModified(header,data["dateModified"]);
       let properties = $(SafeHTML`
-         <div class="uk-card uk-card-default uk-card-body uk-margin properties">
+         <div class="uk-card uk-card-default uk-card-body uk-margin editor-properties">
          <h3 class="uk-heading-line"><span>Properties</span></h3>
-         <div class="properties-body"></div>
-         </div>`);
+         <ul uk-tab>
+            <li class="uk-active">
+               <a href="#">Standard</a>
+            </li>
+            <li class="uk-active">
+               <a href="#">Extended</a>
+            </li>
+         </ul>
+         <ul class="uk-switcher uk-margin">
+         <li>
+            <div class="uk-card uk-margin-left uk-margin-right editor-properties-standard">
+               <fieldset class="uk-fieldset  uk-form-horizontal">
+                  <div class="uk-margin">
+                     <label class="uk-form-label" for="genre">Genre</label>
+                     <div class="uk-form-controls">
+                        <input class="uk-input" value="${data["genre"]}" name="genre" size="40">
+                     </div>
+                  </div>
+                  <div class="uk-margin">
+                     <label class="uk-form-label" for="genre">Name</label>
+                     <div class="uk-form-controls">
+                        <input class="uk-input" value="${data["name"]}" name="name" size="40">
+                     </div>
+                  </div>
+                  <div class="uk-margin">
+                     <label class="uk-form-label" for="genre">Title</label>
+                     <div class="uk-form-controls">
+                        <input class="uk-input" value="${data["headline"]}" name="headline" size="40">
+                     </div>
+                  </div>
+                  <div class="uk-margin">
+                     <label class="uk-form-label" for="genre">Description</label>
+                     <div class="uk-form-controls">
+                        <textarea class="uk-textarea" name="description" cols="40" rows="5">${data["description"]}</textarea>
+                     </div>
+                  </div>
+                  <div class="uk-margin">
+                     <label class="uk-form-label" for="genre">Date Published</label>
+                     <div class="uk-form-controls">
+                        <button class="uk-button uk-button-default editor-publish">Publish</button>
+                        <input class="uk-input" value="${data["datePublished"]}" name="datePublished" size="40">
+                     </div>
+                  </div>
+               </fieldset>
+            </div>
+         </li>
+            <div class="uk-card uk-margin-left uk-margin-right uk-form-horizontal editor-properties-extended">
+               <div class="uk-card uk-card-default uk-card-body editor-part-editor">
+               <h3 class="uk-heading-line"><span>Additional JSON-LD</span></h3>
+               <textarea class="uk-textarea" rows="15"></textarea>
+               </div>
+            </div>
+         </ul>`);
       contentItem.append(properties);
-      let propertiesBody = properties.find("div");
+      $(properties).find(".editor-publish").click(() => {
+         properties.find(".uk-input[name=datePublished]").val(localDateTime());
+      })
+      let propertiesBody = properties.find(".editor-properties-standard");
       let partList = [];
       let mediaList = [];
       for (let property of Object.keys(data)) {
@@ -279,27 +368,6 @@ class DuckpondEditor {
             partList = data[property]
          } else if (property=="associatedMedia"){
             mediaList = data[property]
-         } else {
-            let inputType = this.inputTypeFor(property);
-            if (inputType=="textarea") {
-               let row = $(SafeHTML`
-                  <div class="uk-margin">
-                     <label class="uk-form-label" for="${property}" >${property}</label>
-                     <div class="uk-form-controls">
-                        <textarea class="uk-textarea" name="${property}" cols="40" rows="5">${data[property]}</textarea>
-                     </div>
-                  </div>`);
-               propertiesBody.append(row);
-            } else {
-               let row = $(SafeHTML`
-                  <div class="uk-margin">
-                     <label class="uk-form-label" for="${property}" >${property}</label>
-                     <div class="uk-form-controls">
-                        <input class="uk-input" value="${data[property]}" name="${property}" size="40">
-                     </div>
-                  </div>`);
-               propertiesBody.append(row);
-            }
          }
       }
       let footer = $(SafeHTML`

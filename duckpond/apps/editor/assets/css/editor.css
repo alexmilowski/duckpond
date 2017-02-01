@@ -58,3 +58,7 @@ body > main {
 .editor-closer {
    margin-left: -0.5em;
 }
+
+.editor-properties-standard .uk-input[name=datePublished] {
+   width: 20em;
+}
