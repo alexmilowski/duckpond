@@ -72,6 +72,9 @@ class DuckpondEditor {
             this.reloadContents();
          }
       );
+      $("#editor-add-part-dialog select").change(() => {
+         $("#editor-add-part-dialog input[name=type]")[0].value = $("#editor-add-part-dialog select").val();
+      });
    }
 
    error(message) {
@@ -331,9 +334,9 @@ class DuckpondEditor {
       footer.find(".editor-content-part-add").click(() => {
          console.log("Add part");
          console.log(info);
+         UIkit.modal("#editor-add-part-dialog")[0].toggle()
          return false;
       })
-
       let contentPartList = footer.find(".editor-content-parts");
       let addPart = (name,contentType) => {
          let item = $(SafeHTML`
@@ -346,7 +349,7 @@ class DuckpondEditor {
          contentPartList.append(item);
          item.find(".editor-content-part-edit").click(() => {
             console.log(`Edit part ${name}`);
-            this.editContentPart(info,name,contentType);
+            this.editContentPart(info,name,contentType,false);
             return false;
          });
          item.find(".editor-content-part-download").click(() => {
@@ -355,16 +358,8 @@ class DuckpondEditor {
             return false;
          });
          item.find(".editor-content-part-delete").click(() => {
-            console.log(`Delete part ${name}`);
-            console.log(part);
-            console.log(info);
             setTimeout(() => {
-               UIkit.modal.confirm(`Are you sure you want to delete ${name}?`)
-                  .then(
-                     () => {
-                        console.log(`Deleting ${name} ...`);
-                     }
-                  )
+               this.deleteContentPart(item,info.id,name);
             },25);
             return false;
          });
@@ -372,6 +367,39 @@ class DuckpondEditor {
       for (let part of partList) {
          addPart(part["name"],part["fileFormat"])
       }
+
+      $("#editor-add-part-dialog .editor-create").off('click');
+      $("#editor-add-part-dialog .editor-create").click(() => {
+         let name = $("#editor-add-part-dialog input[name=name]").val();
+         let type = $("#editor-add-part-dialog input[name=type]").val();
+         if (name.trim()=="") {
+            $("#editor-add-part-dialog input[name=name]").addClass("uk-form-danger");
+            $("#editor-add-part-dialog .editor-message-name").text("Please enter a name.")
+            return;
+         } else {
+            $("#editor-add-part-dialog .editor-message-name").text("")
+            $("#editor-add-part-dialog input[name=name]").removeClass("uk-form-danger");
+         }
+         if (type.trim()=="") {
+            $("#editor-add-part-dialog input[name=type]").addClass("uk-form-danger");
+            $("#editor-add-part-dialog .editor-message-type").text("Please enter a media type.")
+            return;
+         } else {
+            $("#editor-add-part-dialog .editor-message-type").text("")
+            $("#editor-add-part-dialog input[name=type]").removeClass("uk-form-danger");
+         }
+         UIkit.modal("#editor-add-part-dialog")[0].toggle()
+         setTimeout(() => {
+            this.editContentPart(info,name.trim(),type.trim(),true,
+               (name,contentType,creating) => {
+                  if (creating) {
+                     addPart(name,contentType);
+                  }
+               }
+            );
+         },10);
+      })
+
       let contentMediaList = footer.find(".editor-content-media");
       let addMedia = (name,contentType) => {
          let item = $(SafeHTML`
@@ -387,7 +415,6 @@ class DuckpondEditor {
             return false;
          });
          item.find(".editor-content-media-delete").click(() => {
-            console.log(`Delete media ${name}`);
             setTimeout(() => {
                this.deleteContentMediaResource(item,info.id,name);
             },25);
@@ -445,13 +472,13 @@ class DuckpondEditor {
                bar.setAttribute('hidden', 'hidden');
             }, 1000);
 
-            alert('Upload Completed');
+            UIkit.notification("<span uk-icon='icon: check'></span> Media upload completed.");
          }
       });
 
    }
 
-   editContentPart(info,name,contentType) {
+   editContentPart(info,name,contentType,creating,onUpdate) {
       // Check to see if it is already open.  If so, switch to that tab.
       let found = false;
       $("#editor-content-tabs li").each((i,tab) => {
@@ -513,13 +540,30 @@ class DuckpondEditor {
       let textarea = tabContent.find("textarea")[0];
       tabContent.find(".editor-content-item-save").click(() => {
          console.log(`Save content part ${info.id} ${name}`);
-         this.client.updateContentResource(info.id,name,contentType,$(textarea).val())
-            .then(() => {
-               alert('Changes saved.');
-            })
-            .catch((status) => {
-               this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
-            });
+         if (creating) {
+            this.client.createContentResource(info.id,name,"hasPart",contentType,$(textarea).val())
+               .then(() => {
+                  UIkit.notification("<span uk-icon='icon: check'></span> Content part created.");
+                  if (onUpdate) {
+                     onUpdate(name,contentType,creating);
+                  }
+                  creating = false
+               })
+               .catch((status) => {
+                  this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+               });
+         } else {
+            this.client.updateContentResource(info.id,name,contentType,$(textarea).val())
+               .then(() => {
+                  UIkit.notification("<span uk-icon='icon: check'></span> Content part saved.");
+                  if (onUpdate) {
+                     onUpdate(name,contentType,creating);
+                  }
+               })
+               .catch((status) => {
+                  this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+               });
+         }
       });
       setTimeout(
          () => {
@@ -527,13 +571,22 @@ class DuckpondEditor {
          },
          50
       );
-      this.client.getContentResource(info.id,name)
-         .then((text) => {
-            $(textarea).text(text);
-         })
-         .catch((status) => {
-            this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
-         })
+      if (creating) {
+         if (contentType=="text/html") {
+            $(textarea).text("<article><h1>Title</h1></article>");
+         } else if (contentType=="text/markdown") {
+            $(textarea).text("# Title");
+         }
+         contentType = contentType + "; charset=UTF-8";
+      } else {
+         this.client.getContentResource(info.id,name)
+            .then((text) => {
+               $(textarea).text(text);
+            })
+            .catch((status) => {
+               this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+            });
+      }
 
    }
 
@@ -552,6 +605,7 @@ class DuckpondEditor {
                   .then(() => {
                      console.log("Success!");
                      $(row).remove();
+                     UIkit.notification(`<span uk-icon='icon: check'></span> Deleted ${dataset["genre"]}/${dataset["name"]}`);
                   })
                   .catch((status) => {
                      if (status==404) {
@@ -564,14 +618,46 @@ class DuckpondEditor {
    }
 
    deleteContentMediaResource(item,id,name) {
-      UIkit.modal.confirm(`Are you sure you want to delete ${name}?`)
+      UIkit.modal.confirm(`Are you sure you want to delete media ${name}?`)
          .then(
             () => {
-               console.log(`Deleting ${name}`);
+               console.log(`Deleting media ${id} ${name}`);
                this.client.deleteContentResource(id,name)
                   .then(() => {
                      console.log("Success!");
                      $(item).remove();
+                     UIkit.notification(`<span uk-icon='icon: check'></span> Deleted media ${name}`);
+                  })
+                  .catch((status) => {
+                     if (status==404) {
+                        $(item).remove();
+                     } else {
+                        this.error(`Cannot delete resource ${name}, status ${status}`);
+                     }
+                  });
+         })
+   }
+   deleteContentPart(item,id,name) {
+      UIkit.modal.confirm(`Are you sure you want to delete part ${name}?`)
+         .then(
+            () => {
+               console.log(`Deleting part ${id} ${name}`);
+               this.client.deleteContentResource(id,name)
+                  .then(() => {
+                     console.log("Success!");
+                     $(item).remove();
+                     UIkit.notification(`<span uk-icon='icon: check'></span> Deleted part ${name}`);
+                     // Check to see if it is already open.  If so, switch to that tab.
+                     $("#editor-content-tabs li").each((i,tab) => {
+                        if (tab.dataset.id==id && tab.dataset.name==name) {
+                           $(tab).remove();
+                        }
+                     });
+                     $("#editor-content li").each((i,tab) => {
+                        if (tab.dataset.id==id && tab.dataset.name==name) {
+                           $(tab).remove();
+                        }
+                     });
                   })
                   .catch((status) => {
                      if (status==404) {
@@ -683,6 +769,25 @@ class DuckpondClient {
       });
    }
 
+   createContentResource(id,resource,property,contentType,data) {
+      let headers = new Headers();
+      headers.append('Content-Type',contentType);
+      return new Promise((resolve,reject) => {
+         fetch(this.service + "content/" + id + "/" + resource + ";" + property,{
+            method : 'put',
+            headers : headers,
+            body: data
+         }).then(
+            (response) => {
+               if (response.ok) {
+                  resolve()
+               } else {
+                  reject(response.status);
+               }
+            }
+         );
+      });
+   }
    updateContentResource(id,resource,contentType,data) {
       let headers = new Headers();
       headers.append('Content-Type',contentType);
