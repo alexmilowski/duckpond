@@ -347,6 +347,20 @@ def mediaSubject(s,url):
    #print(subjects)
    return (uri(subjects['values'][0][0]),uri(subjects['values'][0][1])) if len(subjects['values'])>0 else (None,None)
 
+def mediaProperties(s,url,*names):
+   service = app.config['UPDATE_SERVICE']
+   expr = '<{0}> ?p ?s . ?s schema:contentUrl <{1}>'.format(s,url)
+   for index,name in enumerate(names):
+      expr += ';'
+      expr += ' schema:'+name+' ?'+name
+   q = SPARQL() \
+         .start({ 'schema' : 'http://schema.org/'}) \
+         .select(names) \
+         .where(expr)
+   #print(str(q))
+   properties = service.query(q)
+   return tuple(properties['values'][0]) if len(properties['values'])>0 else None
+
 def subjectProperties(s,*names):
    service = app.config['UPDATE_SERVICE']
    expr = '<' + s + '>' if s[0]!='_' else s
@@ -528,6 +542,7 @@ def content_item_resource_property(id,resource,property):
    if parentSubject == None:
       abort(404)
    subject,predicate = mediaSubject(parentSubject,resourceURL)
+   #print(subject)
    if property is None:
       property = shorten(predicate)
 
@@ -570,7 +585,8 @@ def content_item_resource_property(id,resource,property):
    if request.method == 'GET':
       if 'reader' not in request.roles:
          abort(401)
-      contentType, = subjectProperties(subject,'fileFormat')
+      #print(subject)
+      contentType, = mediaProperties(parentSubject,resourceURL,'fileFormat')
       #print(contentType)
       status,data,size = app.config['RESOURCE_SERVICE'].getResource(resourceURL)
       if status!=200:
