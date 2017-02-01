@@ -54,3 +54,7 @@ body > main {
 .editor-content-item {
    margin-left: 3em;
 }
+
+.editor-closer {
+   margin-left: -0.5em;
+}

@@ -207,12 +207,17 @@ class DuckpondEditor {
          </li>`
       );
       let tab = $(
-         SafeHTML`<li data-url="${dataset.url}" class="editor-content-tab"><a href="#" title="${dataset.headline}">${dataset.genre} / ${dataset.name}</a></li>`
+         SafeHTML`<li data-url="${dataset.url}" class="editor-content-tab uk-visible-toggle"><a href="#" title="${dataset.headline}"><span class="uk-icon-link uk-invisible-hover editor-closer" uk-icon="icon: close; ratio: 0.75"></span>${dataset.genre} / ${dataset.name}</a></li>`
       );
       let tabIndex = $("#editor-content-tabs li").length;
       $("#editor-content-tabs").append(tab);
       $("#editor-content").append(tabContent);
       tabContent.find(".editor-content-item-close").click((e) => {
+         tab.remove();
+         tabContent.remove();
+         UIkit.switcher("#editor-content-tabs")[0].show(tabIndex-1);
+      });
+      tab.find(".editor-closer").click((e) => {
          tab.remove();
          tabContent.remove();
          UIkit.switcher("#editor-content-tabs")[0].show(tabIndex-1);
@@ -256,9 +261,9 @@ class DuckpondEditor {
          <p>modified ${data["dateModified"]}</p>
          </div>`));
       let properties = $(SafeHTML`
-         <div class="uk-card uk-card-default uk-card-body uk-margin">
+         <div class="uk-card uk-card-default uk-card-body uk-margin properties">
          <h3 class="uk-heading-line"><span>Properties</span></h3>
-         <div></div>
+         <div class="properties-body"></div>
          </div>`);
       contentItem.append(properties);
       let propertiesBody = properties.find("div");
@@ -341,6 +346,7 @@ class DuckpondEditor {
          contentPartList.append(item);
          item.find(".editor-content-part-edit").click(() => {
             console.log(`Edit part ${name}`);
+            this.editContentPart(info,name,contentType);
             return false;
          });
          item.find(".editor-content-part-download").click(() => {
@@ -442,6 +448,92 @@ class DuckpondEditor {
             alert('Upload Completed');
          }
       });
+
+   }
+
+   editContentPart(info,name,contentType) {
+      // Check to see if it is already open.  If so, switch to that tab.
+      let found = false;
+      $("#editor-content-tabs li").each((i,tab) => {
+         if (tab.dataset.id==info.id && tab.dataset.name==name) {
+            setTimeout(
+               () => {
+                  UIkit.switcher("#editor-content-tabs")[0].show(i);
+               },
+               50
+            );
+            found = true;
+         }
+      });
+      if (found) {
+         return;
+      }
+
+      // Create a new tab with the content
+
+      let tab = $(
+         SafeHTML`<li data-id="${info.id}" data-name="${name}" class="editor-content-tab uk-visible-toggle"><a href="#" title="${info.ld["genre"]}/${info.ld["name"]} ${name}"><span class="uk-icon-link uk-invisible-hover editor-closer" uk-icon="icon: close; ratio: 0.75"></span>${name}</a></li>`
+      );
+      let tabContent = $(
+         SafeHTML`<li data-id="${info.id}" data-name="${name}" class="editor-content-tab-item">
+            <ul class="uk-iconnav uk-iconnav-vertical editor-content-item-menu">
+               <li><a href="#" uk-icon="icon: close" title="Close" class="editor-content-item-close"></a></li>
+               <li><a href="#" uk-icon="icon: push" title="Save" class="editor-content-item-save"></a></li>
+            </ul>
+            <div class="editor-content-item ">
+               <div class="uk-card uk-card-default uk-card-body editor-part-editor">
+               <textarea class="uk-textarea" rows="15" placeholder="Loading ..."></textarea>
+               </div>
+            </div>
+         </li>`
+      );
+      let tabIndex = $("#editor-content-tabs li").length;
+      $("#editor-content-tabs").append(tab);
+      $("#editor-content").append(tabContent);
+      tab.find(".editor-closer").click(() => {
+         tab.remove();
+         tabContent.remove();
+         setTimeout(
+            () => {
+               UIkit.switcher("#editor-content-tabs")[0].show(tabIndex-1);
+            },
+            50
+         );
+      });
+      tabContent.find(".editor-content-item-close").click(() => {
+         tab.remove();
+         tabContent.remove();
+         setTimeout(
+            () => {
+               UIkit.switcher("#editor-content-tabs")[0].show(tabIndex-1);
+            },
+            50
+         );
+      });
+      let textarea = tabContent.find("textarea")[0];
+      tabContent.find(".editor-content-item-save").click(() => {
+         console.log(`Save content part ${info.id} ${name}`);
+         this.client.updateContentResource(info.id,name,contentType,$(textarea).val())
+            .then(() => {
+               alert('Changes saved.');
+            })
+            .catch((status) => {
+               this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+            });
+      });
+      setTimeout(
+         () => {
+            UIkit.switcher("#editor-content-tabs")[0].show(tabIndex);
+         },
+         50
+      );
+      this.client.getContentResource(info.id,name)
+         .then((text) => {
+            $(textarea).text(text);
+         })
+         .catch((status) => {
+            this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+         })
 
    }
 
@@ -575,6 +667,41 @@ class DuckpondClient {
       });
    }
 
+   getContentResource(id,resource) {
+      return new Promise((resolve,reject) => {
+         fetch(this.service + "content/" + id + "/" + resource).then(
+            (response) => {
+               if (response.ok) {
+                  response.text().then((data) => {
+                     resolve(data)
+                  });
+               } else {
+                  reject(response.status);
+               }
+            }
+         );
+      });
+   }
+
+   updateContentResource(id,resource,contentType,data) {
+      let headers = new Headers();
+      headers.append('Content-Type',contentType);
+      return new Promise((resolve,reject) => {
+         fetch(this.service + "content/" + id + "/" + resource,{
+            method : 'put',
+            headers : headers,
+            body: data
+         }).then(
+            (response) => {
+               if (response.ok) {
+                  resolve()
+               } else {
+                  reject(response.status);
+               }
+            }
+         );
+      });
+   }
    deleteContentResource(id,name) {
       return new Promise((resolve,reject) => {
          fetch(this.service + "content/" + id + "/" + name,{

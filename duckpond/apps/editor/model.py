@@ -1,5 +1,7 @@
 import requests
 import json
+import shutil
+from tempfile import TemporaryFile
 from flask import session, abort
 from .app import app, users
 
@@ -48,6 +50,16 @@ def getContentResource(id,name):
    url = app.config['SERVICE'] + 'content/' + id + '/' + name
    response = requests.get(url,auth=getAuth(),stream = True)
    return (response.status_code,response.iter_content(chunk_size=10*1024),response.headers.get('content-type'))
+
+def updateContentResource(id,name,content_type,data):
+   url = app.config['SERVICE'] + 'content/' + id + '/' + name
+   with TemporaryFile() as cached:
+      shutil.copyfileobj(data,cached)
+      size = cached.tell()
+      cached.seek(0)
+      headers = {'Content-Type' : content_type, 'Content-Length' : size}
+      response = requests.put(url,auth=getAuth(),data=cached,headers=headers)
+      return response.status_code
 
 def uploadContentResource(id,property,name,content_type,content_length,data):
    url = app.config['SERVICE'] + 'content/' + id + '/' + name + ";" + property

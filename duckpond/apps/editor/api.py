@@ -46,7 +46,7 @@ def content_item(id):
       status = model.deleteContent(id)
       return Response(status=status)
 
-@app.route('/data/content/<id>/<resource>',methods=['GET','DELETE'])
+@app.route('/data/content/<id>/<resource>',methods=['GET','PUT','DELETE'])
 def content_item_resource(id,resource):
    if request.method == 'GET':
       status_code,data,contentType = model.getContentResource(id,resource);
@@ -54,6 +54,10 @@ def content_item_resource(id,resource):
          return Response(stream_with_context(data),content_type = contentType)
       else:
          abort(status_code)
+   if request.method == 'PUT':
+      status_code = model.updateContentResource(id,resource,request.headers['Content-Type'],request.stream);
+      return Response(status=status_code)
+
    if request.method == 'DELETE':
       status = model.deleteContentResource(id,resource)
       return Response(status=status)
