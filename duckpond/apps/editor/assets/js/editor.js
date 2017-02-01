@@ -245,8 +245,7 @@ class DuckpondEditor {
          id : id,
          ld : data,
          ui : tabContent,
-         parts : [],
-         media : []
+         parts : []
       };
       this.content[id] = info;
       let contentItem = tabContent.find(".editor-content-item");
@@ -263,13 +262,15 @@ class DuckpondEditor {
          </div>`);
       contentItem.append(properties);
       let propertiesBody = properties.find("div");
+      let partList = [];
+      let mediaList = [];
       for (let property of Object.keys(data)) {
          if (property=="@context" || property=="@id" || property=="@type" || property=="dateModified" || property=="url" || property=="author") {
             continue;
          } else if (property=="hasPart"){
-            info.parts = data[property]
+            partList = data[property]
          } else if (property=="associatedMedia"){
-            info.media = data[property]
+            mediaList = data[property]
          } else {
             let inputType = this.inputTypeFor(property);
             if (inputType=="textarea") {
@@ -312,7 +313,7 @@ class DuckpondEditor {
              </ul>
              <div class="editor-content-media-add uk-placeholder uk-text-center">
                <span uk-icon="icon: cloud-upload"></span>
-               <span class="uk-text-middle">Add media by dropping them here or</span>
+               <span class="uk-text-middle">Add or update media by dropping them here or</span>
                <div uk-form-custom>
                  <input type="file">
                  <span class="uk-link">selecting one</span>
@@ -328,11 +329,74 @@ class DuckpondEditor {
          return false;
       })
 
+      let contentPartList = footer.find(".editor-content-parts");
+      let addPart = (name,contentType) => {
+         let item = $(SafeHTML`
+            <li>${name}; ${contentType}
+               <a href="#" uk-icon="icon: file-edit" title="Edit Part" class="uk-icon-link editor-content-part-edit"></a>
+               <a href="#" uk-icon="icon: download" title="Edit Part" class="uk-icon-link editor-content-part-download"></a>
+               <a href="#" uk-icon="icon: trash" title="Delete Part" class="uk-icon-link editor-content-part-delete"></a>
+            </li>
+         `);
+         contentPartList.append(item);
+         item.find(".editor-content-part-edit").click(() => {
+            console.log(`Edit part ${name}`);
+            return false;
+         });
+         item.find(".editor-content-part-download").click(() => {
+            console.log(`Download part ${name}`);
+            open(`/data/content/${info.id}/${name}`,name);
+            return false;
+         });
+         item.find(".editor-content-part-delete").click(() => {
+            console.log(`Delete part ${name}`);
+            console.log(part);
+            console.log(info);
+            setTimeout(() => {
+               UIkit.modal.confirm(`Are you sure you want to delete ${name}?`)
+                  .then(
+                     () => {
+                        console.log(`Deleting ${name} ...`);
+                     }
+                  )
+            },25);
+            return false;
+         });
+      };
+      for (let part of partList) {
+         addPart(part["name"],part["fileFormat"])
+      }
+      let contentMediaList = footer.find(".editor-content-media");
+      let addMedia = (name,contentType) => {
+         let item = $(SafeHTML`
+            <li data-name="${name}">${name}; ${contentType}
+               <a href="#" uk-icon="icon: download" title="Download Media" class="uk-icon-link editor-content-media-download"></a>
+               <a href="#" uk-icon="icon: trash" title="Delete Media" class="uk-icon-link editor-content-media-delete"></a>
+            </li>
+         `);
+         contentMediaList.append(item);
+         item.find(".editor-content-media-download").click(() => {
+            console.log(`Download media ${name}`);
+            open(`/data/content/${info.id}/${name}`,name);
+            return false;
+         });
+         item.find(".editor-content-media-delete").click(() => {
+            console.log(`Delete media ${name}`);
+            setTimeout(() => {
+               this.deleteContentMediaResource(item,info.id,name);
+            },25);
+            return false;
+         });
+      };
+      for (let media of mediaList) {
+         addMedia(media["name"],media["fileFormat"]);
+      }
       let bar = footer.find(".editor-content-media-add-progress")[0];
       UIkit.upload(`#content-item-${info.id} .editor-content-media-add`,{
          url : this.client.service + "content/" + info.id + "/upload/associatedMedia",
          multiple: false,
          name: "file",
+         "data-type": "json",
          beforeSend: function() { console.log('beforeSend', arguments); },
          beforeAll: function() { console.log('beforeAll', arguments); },
          load: function() { console.log('load', arguments); },
@@ -360,6 +424,17 @@ class DuckpondEditor {
          completeAll: function () {
             console.log('completeAll', arguments);
 
+            let name = arguments[0].responseJSON["name"];
+            let existing = false;
+            contentMediaList.find("li").each((i,item) => {
+               if (item.dataset.name==name) {
+                  existing = true;
+               }
+            });
+            if (!existing) {
+               addMedia(name,arguments[0].responseJSON["content-type"]);
+            }
+
             setTimeout(function () {
                bar.setAttribute('hidden', 'hidden');
             }, 1000);
@@ -368,61 +443,6 @@ class DuckpondEditor {
          }
       });
 
-      let contentPartList = footer.find(".editor-content-parts");
-      for (let part of info.parts) {
-         let item = $(SafeHTML`
-            <li>${part["name"]}; ${part["fileFormat"]}
-               <a href="#" uk-icon="icon: file-edit" title="Edit Part" class="uk-icon-link editor-content-part-edit"></a>
-               <a href="#" uk-icon="icon: trash" title="Delete Part" class="uk-icon-link editor-content-part-delete"></a>
-            </li>
-         `);
-         contentPartList.append(item);
-         item.find(".editor-content-part-edit").click(() => {
-            console.log("Edit Part");
-            console.log(part);
-            console.log(info);
-            return false;
-         });
-         item.find(".editor-content-part-delete").click(() => {
-            console.log("Delete Part");
-            console.log(part);
-            console.log(info);
-            setTimeout(() => {
-               UIkit.modal.confirm(`Are you sure you want to delete ${part["name"]}?`)
-                  .then(
-                     () => {
-                        console.log(`Deleting ${part["name"]} ...`);
-                     }
-                  )
-            },25);
-            return false;
-         });
-      }
-      let contentMediaList = footer.find(".editor-content-media");
-      for (let media of info.media) {
-         let item = $(SafeHTML`
-            <li>${media["name"]}; ${media["fileFormat"]}
-               <a href="#" uk-icon="icon: cloud-upload" title="Upload Media" class="uk-icon-link editor-content-media-upload"></a>
-               <a href="#" uk-icon="icon: trash" title="Delete Media" class="uk-icon-link editor-content-media-delete"></a>
-            </li>
-         `);
-         contentMediaList.append(item);
-         item.find(".editor-content-media-upload").click(() => {
-            console.log("Upload Media (Replace)");
-            console.log(media);
-            console.log(info);
-            return false;
-         });
-         item.find(".editor-content-media-delete").click(() => {
-            console.log("Delete Media");
-            console.log(media);
-            console.log(info);
-            setTimeout(() => {
-               this.deleteContentMediaResource(item,info,media);
-            },25);
-            return false;
-         });
-      }
    }
 
    deleteContent(row,dataset) {
@@ -451,27 +471,21 @@ class DuckpondEditor {
          })
    }
 
-   deleteContentMediaResource(item,info,media) {
-      UIkit.modal.confirm(`Are you sure you want to delete ${media["name"]}?`)
+   deleteContentMediaResource(item,id,name) {
+      UIkit.modal.confirm(`Are you sure you want to delete ${name}?`)
          .then(
             () => {
-               console.log(`Deleting ${media["name"]}`);
-               this.client.deleteContentResource(info.id,media["name"])
+               console.log(`Deleting ${name}`);
+               this.client.deleteContentResource(id,name)
                   .then(() => {
                      console.log("Success!");
                      $(item).remove();
-                     for (let i=0; i<info.media.length; i++) {
-                        if (info.media[i].name==media.name) {
-                           info.media.splice(i,1)
-                           break;
-                        }
-                     }
                   })
                   .catch((status) => {
                      if (status==404) {
                         $(item).remove();
                      } else {
-                        this.error(`Cannot delete resource ${media["name"]}, status ${status}`);
+                        this.error(`Cannot delete resource ${name}, status ${status}`);
                      }
                   });
          })

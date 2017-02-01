@@ -1,6 +1,6 @@
 import json
 import os
-from flask import make_response, request, Response
+from flask import make_response, request, Response, stream_with_context
 from .app import app
 from . import model
 
@@ -46,10 +46,17 @@ def content_item(id):
       status = model.deleteContent(id)
       return Response(status=status)
 
-@app.route('/data/content/<id>/<resource>',methods=['DELETE'])
+@app.route('/data/content/<id>/<resource>',methods=['GET','DELETE'])
 def content_item_resource(id,resource):
-   status = model.deleteContentResource(id,resource)
-   return Response(status=status)
+   if request.method == 'GET':
+      status_code,data,contentType = model.getContentResource(id,resource);
+      if status_code==200:
+         return Response(stream_with_context(data),content_type = contentType)
+      else:
+         abort(status_code)
+   if request.method == 'DELETE':
+      status = model.deleteContentResource(id,resource)
+      return Response(status=status)
 
 
 @app.route('/data/content/<id>/upload/<property>',methods=['POST'])
@@ -68,4 +75,4 @@ def content_item_resource_upload(id,property):
    with open(staged,"rb") as data:
       status = model.uploadContentResource(id,property,file.filename,file.content_type,os.path.getsize(staged),data)
    os.unlink(staged)
-   return Response(status=status)
+   return jsonld_response(json.dumps({"name" : file.filename, "content-type" : file.content_type}))
