@@ -71,7 +71,7 @@ def uploadContentResource(id,property,name,content_type,content_length,data):
    url = app.config['SERVICE'] + 'content/' + id + '/' + name + ";" + property
    headers = {'Content-Type' : content_type, 'Content-Length' : content_length}
    response = requests.put(url,auth=getAuth(),data=data,headers=headers)
-   return response.status_code
+   return (response.status_code,response.iter_content(chunk_size=10*1024),response.headers.get('content-type'))
 
 def deleteContentResource(id,name):
    url = app.config['SERVICE'] + 'content/' + id + '/' + name

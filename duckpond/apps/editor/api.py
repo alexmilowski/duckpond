@@ -65,7 +65,7 @@ def content_item_resource(id,resource):
    if request.method == 'PUT':
       status_code,data,contentType = model.updateContentResource(id,resource,request.headers['Content-Type'],request.stream);
       if status_code==200 or status_code==201:
-         return Response(stream_with_context(data),content_type = contentType)
+         return Response(stream_with_context(data),status=status_code,content_type = contentType)
       else:
          return Response(status=status)
 
@@ -87,7 +87,12 @@ def content_item_resource_upload(id,property):
    staged = os.path.join(uploadDir, file.filename)
    file.save(staged)
    status = 500
+   responseJSON = None
+   contentType = None
    with open(staged,"rb") as data:
-      status = model.uploadContentResource(id,property,file.filename,file.content_type,os.path.getsize(staged),data)
+      status,responseJSON,contentType = model.uploadContentResource(id,property,file.filename,file.content_type,os.path.getsize(staged),data)
    os.unlink(staged)
-   return jsonld_response(json.dumps({"name" : file.filename, "content-type" : file.content_type}))
+   if status==200 or status==201:
+      return Response(stream_with_context(responseJSON),status=status,content_type = contentType)
+   else:
+      return Response(status=status)

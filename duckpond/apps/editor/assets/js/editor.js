@@ -484,7 +484,7 @@ class DuckpondEditor {
          });
          item.find(".editor-content-part-delete").click(() => {
             setTimeout(() => {
-               this.deleteContentPart(item,info.id,name);
+               this.deleteContentPart(item,info,name);
             },25);
             return false;
          });
@@ -541,7 +541,7 @@ class DuckpondEditor {
          });
          item.find(".editor-content-media-delete").click(() => {
             setTimeout(() => {
-               this.deleteContentMediaResource(item,info.id,name);
+               this.deleteContentMediaResource(item,info,name);
             },25);
             return false;
          });
@@ -582,6 +582,8 @@ class DuckpondEditor {
          completeAll: function () {
             console.log('completeAll', arguments);
 
+            console.log(arguments[0].responseJSON);
+
             let name = arguments[0].responseJSON["name"];
             let existing = false;
             contentMediaList.find("li").each((i,item) => {
@@ -591,6 +593,11 @@ class DuckpondEditor {
             });
             if (!existing) {
                addMedia(name,arguments[0].responseJSON["content-type"]);
+               if (info.ld.associatedMedia==undefined) {
+                  info.ld.associatedMedia = [];
+               }
+               info.ld.associatedMedia.push(arguments[0].responseJSON);
+               console.log(info.ld);
             }
 
             setTimeout(function () {
@@ -747,16 +754,26 @@ class DuckpondEditor {
          })
    }
 
-   deleteContentMediaResource(item,id,name) {
+   deleteContentMediaResource(item,info,name) {
       UIkit.modal.confirm(`Are you sure you want to delete media ${name}?`)
          .then(
             () => {
-               console.log(`Deleting media ${id} ${name}`);
-               this.client.deleteContentResource(id,name)
+               console.log(`Deleting media ${info.id} ${name}`);
+               this.client.deleteContentResource(info.id,name)
                   .then(() => {
                      console.log("Success!");
                      $(item).remove();
                      UIkit.notification(`<span uk-icon='icon: check'></span> Deleted media ${name}`);
+                     for (let i in info.ld.associatedMedia) {
+                        if (info.ld.associatedMedia[i].name==name) {
+                           info.ld.associatedMedia.splice(i)
+                           break;
+                        }
+                     }
+                     if (info.ld.associatedMedia.length==0) {
+                        delete info.ld["associatedMedia"];
+                     }
+                     console.log(info.ld);
                   })
                   .catch((status) => {
                      if (status==404) {
@@ -767,27 +784,37 @@ class DuckpondEditor {
                   });
          })
    }
-   deleteContentPart(item,id,name) {
+   deleteContentPart(item,info,name) {
       UIkit.modal.confirm(`Are you sure you want to delete part ${name}?`)
          .then(
             () => {
-               console.log(`Deleting part ${id} ${name}`);
-               this.client.deleteContentResource(id,name)
+               console.log(`Deleting part ${info.id} ${name}`);
+               this.client.deleteContentResource(info.id,name)
                   .then(() => {
                      console.log("Success!");
                      $(item).remove();
                      UIkit.notification(`<span uk-icon='icon: check'></span> Deleted part ${name}`);
                      // Check to see if it is already open.  If so, switch to that tab.
                      $("#editor-content-tabs li").each((i,tab) => {
-                        if (tab.dataset.id==id && tab.dataset.name==name) {
+                        if (tab.dataset.id==info.id && tab.dataset.name==name) {
                            $(tab).remove();
                         }
                      });
                      $("#editor-content li").each((i,tab) => {
-                        if (tab.dataset.id==id && tab.dataset.name==name) {
+                        if (tab.dataset.id==info.id && tab.dataset.name==name) {
                            $(tab).remove();
                         }
                      });
+                     for (let i in info.ld.hasPart) {
+                        if (info.ld.hasPart[i].name==name) {
+                           info.ld.hasPart.splice(i)
+                           break;
+                        }
+                     }
+                     if (info.ld.hasPart.length==0) {
+                        delete info.ld["hasPart"];
+                     }
+                     console.log(info.ld);
                   })
                   .catch((status) => {
                      if (status==404) {
