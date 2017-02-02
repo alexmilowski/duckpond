@@ -63,8 +63,11 @@ def content_item_resource(id,resource):
       else:
          abort(status_code)
    if request.method == 'PUT':
-      status_code = model.updateContentResource(id,resource,request.headers['Content-Type'],request.stream);
-      return Response(status=status_code)
+      status_code,data,contentType = model.updateContentResource(id,resource,request.headers['Content-Type'],request.stream);
+      if status_code==200 or status_code==201:
+         return Response(stream_with_context(data),content_type = contentType)
+      else:
+         return Response(status=status)
 
    if request.method == 'DELETE':
       status = model.deleteContentResource(id,resource)

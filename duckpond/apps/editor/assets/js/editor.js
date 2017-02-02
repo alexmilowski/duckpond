@@ -667,11 +667,16 @@ class DuckpondEditor {
          console.log(`Save content part ${info.id} ${name}`);
          if (creating) {
             this.client.createContentResource(info.id,name,"hasPart",contentType,$(textarea).val())
-               .then(() => {
+               .then((obj) => {
                   UIkit.notification("<span uk-icon='icon: check'></span> Content part created.");
                   if (onUpdate) {
                      onUpdate(name,contentType,creating);
                   }
+                  if (info.ld.hasPart==undefined) {
+                     info.ld.hasPart = []
+                  }
+                  console.log(obj)
+                  info.ld.hasPart.push(obj)
                   creating = false
                })
                .catch((status) => {
@@ -929,7 +934,9 @@ class DuckpondClient {
          }).then(
             (response) => {
                if (response.ok) {
-                  resolve()
+                  response.json().then((data) => {
+                     resolve(data)
+                  });
                } else {
                   reject(response.status);
                }

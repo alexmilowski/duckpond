@@ -50,7 +50,7 @@ def updateContent(id,data):
    url = app.config['SERVICE'] + 'content/' + id + '/'
    headers = {'Content-Type' : 'application/ld+json'}
    response = requests.put(url,auth=getAuth(),data=json.dumps(data),headers=headers)
-   return (response.status_code,response.iter_content(chunk_size=10*1024),response.headers.get('content-type'))   
+   return (response.status_code,response.iter_content(chunk_size=10*1024),response.headers.get('content-type'))
 
 def getContentResource(id,name):
    url = app.config['SERVICE'] + 'content/' + id + '/' + name
@@ -65,7 +65,7 @@ def updateContentResource(id,name,content_type,data):
       cached.seek(0)
       headers = {'Content-Type' : content_type, 'Content-Length' : size}
       response = requests.put(url,auth=getAuth(),data=cached,headers=headers)
-      return response.status_code
+      return (response.status_code,response.iter_content(chunk_size=10*1024),response.headers.get('content-type'))
 
 def uploadContentResource(id,property,name,content_type,content_length,data):
    url = app.config['SERVICE'] + 'content/' + id + '/' + name + ";" + property
