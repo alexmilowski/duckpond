@@ -336,7 +336,7 @@ def toJSONLD(subject,quads):
    for resolve in toResolve:
       name = resolve['property']
       target = resolve['subject']
-      value = objs[resolve['id']]
+      value = objs.get(resolve['id'])
       if value is None:
          continue
       if name=='hasPart' or name=='associatedMedia':
