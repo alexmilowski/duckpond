@@ -220,22 +220,50 @@ class TurtleSerializer:
       for name in data:
          if name == '@context' or name=='@type' or name=='@id':
             continue;
-         if not first:
-            self.output.write(';\n')
          if isinstance(data[name],dict):
+            if not first:
+               self.output.write(';\n')
+            self.output.write('  ')
+            self.output.write(curie(name))
+            self.output.write(' ')
             if '@id' in data[name]:
+               id = data[name]['@id']
+               if id[0]=='_':
+                  self.output.write(id)
+               else:
+                  self.output.write('<' + id + '>')
                queue.append(data[name])
             else:
+               self.blankNode(data[name])
+         elif isinstance(data[name],list):
+            for obj in data[name]:
+               if not first:
+                  self.output.write(';\n')
                self.output.write('  ')
                self.output.write(curie(name))
-               self.blankNode(data[name])
+               self.output.write(' ')
+               if isinstance(obj,dict):
+                  if '@id' in obj:
+                     id = obj['@id']
+                     if id[0]=='_':
+                        self.output.write(id)
+                     else:
+                        self.output.write('<' + id + '>')
+                     queue.append(obj)
+                  else:
+                     self.blankNode(obj)
+               else:
+                  self.output.write(value(obj,url=name in self.urltypes))
          else:
+            if not first:
+               self.output.write(';\n')
             self.output.write('  {0} {1}'.format(curie(name),value(data[name],url=name in self.urltypes)))
          first = False
       self.output.write('.\n')
       for o in queue:
          subject = o['@id']
          self.about(subject,o)
+      #print(str(self))
 
    def blankNode(self,data):
       self.output.write('[')
@@ -295,7 +323,7 @@ def toJSONLD(subject,quads):
       else:
          name = shorten(p)
          value = literal(uri(o))
-         if name=='hasPart' or name=='associatedMedia':
+         if name=='hasPart' or name=='associatedMedia' or name=='author' or value[0:2]=='_:':
             toResolve.append({ 'subject': obj, 'property': name, 'id': value})
          elif name in obj:
             if type(obj[name])!=list:
