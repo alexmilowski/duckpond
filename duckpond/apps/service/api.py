@@ -580,6 +580,11 @@ def content_item_resource_property(id,resource,property):
          abort(401)
       # Creating content
       contentType = request.headers['Content-Type']
+      mediaObjectType = 'MediaObject'
+      if contentType.find('image/')==0:
+         mediaObjectType = 'ImageObject'
+      elif contentType.find("video/")==0:
+         mediaObjectType = 'VideoObject'
       if property is None:
          property = "associatedMedia"
       #print(request.headers)
@@ -588,13 +593,9 @@ def content_item_resource_property(id,resource,property):
          if subject is None:
             turtle = TurtleSerializer()
             turtle.start()
-            mediaObjectType = 'MediaObject'
-            if contentType.find('image/')==0:
-               mediaObjectType = 'ImageObject'
-            elif contentType.find("video/")==0:
-               mediaObjectType = 'VideoObject'
             turtle.about(parentSubject,{property : {"@type" : mediaObjectType, "contentUrl" : resourceURL, "fileFormat" : contentType, "name" : resource }})
             service.post(turtle.end(),graph=url)
+            subject, *_ = mediaSubject(parentSubject,resourceURL)
          else:
             #print(subject)
             q = SPARQL() \
@@ -604,7 +605,16 @@ def content_item_resource_property(id,resource,property):
                   .insert('?media schema:fileFormat "{0}"'.format(contentType)) \
                   .where('?media schema:contentUrl <{0}>; schema:fileFormat ?contentType'.format(resourceURL) )
             service.update(q,graph=url)
-      return Response(status=status)
+      obj = {
+         "@id" : subject,
+         "@type" : mediaObjectType,
+         "contentUrl" : resourceURL,
+         "fileFormat" : contentType,
+         "name" : resource
+      }
+      response = jsonld_response(json.dumps(obj))
+      response.status_code = status
+      return response
 
    # when there is no subject for the associatedMedia, it does not exist
    if subject is None:
