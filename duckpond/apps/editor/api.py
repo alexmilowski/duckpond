@@ -1,6 +1,6 @@
 import json
 import os
-from flask import make_response, request, Response, stream_with_context
+from flask import make_response, request, Response, stream_with_context, abort
 from .app import app
 from . import model
 
@@ -40,7 +40,15 @@ def content_item(id):
       abort(400)
 
    if request.method == 'PUT':
-      abort(400)
+      force = request.headers['Content-Type'].startswith('application/ld+json')
+      data = request.get_json(force=force)
+      if data is None:
+         abort(400)
+      status_code,data,contentType = model.updateContent(id,data);
+      if status_code==200:
+         return Response(stream_with_context(data),content_type = contentType)
+      else:
+         abort(status_code)
 
    if request.method == 'DELETE':
       status = model.deleteContent(id)

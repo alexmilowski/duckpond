@@ -50,41 +50,47 @@ class DuckpondEditor {
    bind() {
       $("#editor-create-content").click(
          (e) => {
-            let genre = $("#editor-form-content-create").find("input[name=genre]").get(0);
-            let name = $("#editor-form-content-create").find("input[name=name]").get(0);
-            let typeSelect = $("#editor-form-content-create").find("select[name=type-select]").get(0);
-            let typeCustom = $("#editor-form-content-create").find("input[name=type-custom]").get(0);
-            let title = $("#editor-form-content-create").find("input[name=title]").get(0);
+            let genreInput = $("#editor-form-content-create input[name=genre]");
+            let genre = genreInput.val().trim();
+            let nameInput = $("#editor-form-content-create input[name=name]");
+            let name = nameInput.val().trim();
+            let typeInput = $("#editor-form-content-create input[name=type]");
+            let type = typeInput.val().trim();
+            let titleInput = $("#editor-form-content-create input[name=title]");
+            let title = titleInput.val().trim();
             let valid = true;
-            if (genre.value.trim()=="") {
-               $(genre).addClass("uk-form-danger")
+            if (genre=="") {
+               genreInput.addClass("uk-form-danger")
                valid = false;
             } else {
-               $(genre).removeClass("uk-form-danger")
+               genreInput.removeClass("uk-form-danger")
             }
-            if (name.value.trim()=="") {
-               $(name).addClass("uk-form-danger")
+            if (name=="") {
+               nameInput.addClass("uk-form-danger")
                valid = false;
             } else {
-               $(name).removeClass("uk-form-danger")
+               nameInput.removeClass("uk-form-danger")
             }
-            if (title.value.trim()=="") {
-               $(title).addClass("uk-form-danger")
+            if (title=="") {
+               titleInput.addClass("uk-form-danger")
                valid = false;
             } else {
-               $(title).removeClass("uk-form-danger")
+               titleInput.removeClass("uk-form-danger")
             }
-            if (typeSelect.value=="Custom" && typeCustom.value.trim()=="") {
-               $(typeCustom).addClass("uk-form-danger")
+            if (type=="") {
+               typeInput.addClass("uk-form-danger")
                valid = false;
             } else {
-               $(typeCustom).removeClass("uk-form-danger")
+               typeInput.removeClass("uk-form-danger")
             }
             if (valid) {
-               this.createContent(typeSelect.value=="Custom" ? typeCustom.value.trim() : typeSelect.value,genre.value.trim(),name.value.trim(),title.value.trim());
+               this.createContent(type,genre,name,title);
             }
          }
       );
+      $("#editor-form-content-create select").change(() => {
+         $("#editor-form-content-create input[name=type]")[0].value = $("#editor-form-content-create select").val();
+      });
       $(".editor-reload-content").click(
          (e) => {
             this.reloadContents();
@@ -255,9 +261,6 @@ class DuckpondEditor {
                this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
             })
       });
-      tabContent.find(".editor-content-item-save").click((e) => {
-
-      });
       setTimeout(
          () => {
             UIkit.switcher("#editor-content-tabs")[0].show(tabIndex);
@@ -334,14 +337,14 @@ class DuckpondEditor {
                   <div class="uk-margin">
                      <label class="uk-form-label" for="genre">Description</label>
                      <div class="uk-form-controls">
-                        <textarea class="uk-textarea" name="description" cols="40" rows="5">${data["description"]}</textarea>
+                        <textarea class="uk-textarea" name="description" cols="40" rows="5">${"description" in data ? data["description"] : ""}</textarea>
                      </div>
                   </div>
                   <div class="uk-margin">
                      <label class="uk-form-label" for="genre">Date Published</label>
                      <div class="uk-form-controls">
                         <button class="uk-button uk-button-default editor-publish">Publish</button>
-                        <input class="uk-input" value="${data["datePublished"]}" name="datePublished" size="40">
+                        <input class="uk-input" value="${"datePublished" in data ? data["datePublished"] : ""}" name="datePublished" size="40">
                      </div>
                   </div>
                </fieldset>
@@ -350,7 +353,7 @@ class DuckpondEditor {
             <div class="uk-card uk-margin-left uk-margin-right uk-form-horizontal editor-properties-extended">
                <div class="uk-card uk-card-default uk-card-body editor-part-editor">
                <h3 class="uk-heading-line"><span>Additional JSON-LD</span></h3>
-               <textarea class="uk-textarea" rows="15"></textarea>
+               <textarea class="uk-textarea" name="additionalld" rows="15"></textarea>
                </div>
             </div>
          </ul>`);
@@ -359,6 +362,60 @@ class DuckpondEditor {
          properties.find(".uk-input[name=datePublished]").val(localDateTime());
       })
       let propertiesBody = properties.find(".editor-properties-standard");
+
+      tabContent.find(".editor-content-item-save").off("click");
+      tabContent.find(".editor-content-item-save").click((e) => {
+         let genre = propertiesBody.find(".uk-input[name=genre]").val().trim();
+         let name = propertiesBody.find(".uk-input[name=name]").val().trim();
+         let headline = propertiesBody.find(".uk-input[name=headline]").val().trim();
+         let description = propertiesBody.find("textarea[name=description]").val().trim();
+         let datePublished = propertiesBody.find(".uk-input[name=datePublished]").val().trim();
+         let valid = true;
+         if (genre=="") {
+            propertiesBody.find(".uk-input[name=genre]").addClass("uk-form-danger");
+            valid = false;
+         } else {
+            propertiesBody.find(".uk-input[name=genre]").removeClass("uk-form-danger");
+         }
+         if (name=="") {
+            propertiesBody.find(".uk-input[name=name]").addClass("uk-form-danger");
+            valid = false;
+         } else {
+            propertiesBody.find(".uk-input[name=name]").removeClass("uk-form-danger");
+         }
+         if (headline=="") {
+            propertiesBody.find(".uk-input[name=headline]").addClass("uk-form-danger");
+            valid = false;
+         } else {
+            propertiesBody.find(".uk-input[name=headline]").removeClass("uk-form-danger");
+         }
+         if (!valid) {
+            return;
+         }
+         info.ld["genre"] = genre;
+         info.ld["name"] = name;
+         info.ld["headline"] = headline;
+         if (description=="") {
+            delete info.ld["description"]
+         } else {
+            info.ld["description"] = description;
+         }
+         if (datePublished=="") {
+            delete info.ld["datePublished"]
+         } else {
+            info.ld["datePublished"] = datePublished;
+         }
+         console.log(info.ld);
+         this.client.updateContent(info.id,info.ld)
+            .then((updatedData) => {
+               UIkit.notification("<span uk-icon='icon: check'></span> Properties saved.");
+               this.updateModified(header,updatedData["dateModified"]);
+            })
+            .catch((status) => {
+               this.error(`Cannot update properties ${info.id}, status ${status}`);
+            });
+      });
+
       let partList = [];
       let mediaList = [];
       for (let property of Object.keys(data)) {
@@ -788,6 +845,7 @@ class DuckpondClient {
       });
    }
 
+
    deleteContent(id) {
       return new Promise((resolve,reject) => {
          fetch(this.service + "content/" + id + "/",{
@@ -818,6 +876,29 @@ class DuckpondClient {
                }
             }
          );
+      });
+   }
+
+   updateContent(id,ld) {
+      return new Promise((resolve,reject) => {
+         fetch(this.service + "content/" + id + "/",{
+             method: 'put',
+             headers: {
+               "Content-type": "application/ld+json; charset=UTF-8"
+             },
+             body: JSON.stringify(ld)
+          }).then(
+             (response) => {
+                if (response.ok) {
+                   response.json().then((data) => {
+                      resolve(data)
+                   });
+                } else {
+                   reject(response.status);
+                }
+             }
+          )
+
       });
    }
 

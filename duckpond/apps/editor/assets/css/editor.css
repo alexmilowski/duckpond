@@ -41,7 +41,7 @@ body > main {
    width: 10em;
 }
 
-#editor-form-content-create .uk-input[name=type-custom] {
+#editor-form-content-create .uk-input[name=type] {
    width: 30em;
 }
 

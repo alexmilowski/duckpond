@@ -46,6 +46,12 @@ def getContent(id):
    else:
       raise IOError('Cannot get content {id} from service, status {status}'.format(**{'status':response.status_code,'id':id}))
 
+def updateContent(id,data):
+   url = app.config['SERVICE'] + 'content/' + id + '/'
+   headers = {'Content-Type' : 'application/ld+json'}
+   response = requests.put(url,auth=getAuth(),data=json.dumps(data),headers=headers)
+   return (response.status_code,response.iter_content(chunk_size=10*1024),response.headers.get('content-type'))   
+
 def getContentResource(id,name):
    url = app.config['SERVICE'] + 'content/' + id + '/' + name
    response = requests.get(url,auth=getAuth(),stream = True)
