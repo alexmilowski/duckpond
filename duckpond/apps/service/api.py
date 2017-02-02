@@ -605,16 +605,21 @@ def content_item_resource_property(id,resource,property):
                   .insert('?media schema:fileFormat "{0}"'.format(contentType)) \
                   .where('?media schema:contentUrl <{0}>; schema:fileFormat ?contentType'.format(resourceURL) )
             service.update(q,graph=url)
-      obj = {
-         "@id" : subject,
-         "@type" : mediaObjectType,
-         "contentUrl" : resourceURL,
-         "fileFormat" : contentType,
-         "name" : resource
-      }
-      response = jsonld_response(json.dumps(obj))
-      response.status_code = status
-      return response
+      if status==204:
+         status = 200
+      if status>=200 and status<300:
+         obj = {
+            "@id" : subject,
+            "@type" : mediaObjectType,
+            "contentUrl" : resourceURL,
+            "fileFormat" : contentType,
+            "name" : resource
+         }
+         response = jsonld_response(json.dumps(obj))
+         response.status_code = status
+         return response
+      else:
+         abort(status)
 
    # when there is no subject for the associatedMedia, it does not exist
    if subject is None:
