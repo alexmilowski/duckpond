@@ -347,6 +347,12 @@ class DuckpondEditor {
                         <input class="uk-input" value="${"datePublished" in data ? data["datePublished"] : ""}" name="datePublished" size="40">
                      </div>
                   </div>
+                  <div class="uk-margin">
+                     <label class="uk-form-label" for="genre">Keywords</label>
+                     <div class="uk-form-controls">
+                        <textarea class="uk-textarea" name="keywords" cols="40" rows="2">${"keywords" in data ? data["keywords"] : ""}</textarea>
+                     </div>
+                  </div>
                </fieldset>
             </div>
          </li>
@@ -370,6 +376,7 @@ class DuckpondEditor {
          let headline = propertiesBody.find(".uk-input[name=headline]").val().trim();
          let description = propertiesBody.find("textarea[name=description]").val().trim();
          let datePublished = propertiesBody.find(".uk-input[name=datePublished]").val().trim();
+         let keywordsText = propertiesBody.find("textarea[name=keywords]").val().trim();
          let valid = true;
          if (genre=="") {
             propertiesBody.find(".uk-input[name=genre]").addClass("uk-form-danger");
@@ -404,6 +411,15 @@ class DuckpondEditor {
             delete info.ld["datePublished"]
          } else {
             info.ld["datePublished"] = datePublished;
+         }
+         if (keywordsText=="") {
+            delete info.ld["keywords"]
+         } else {
+            let keywords = keywordsText.split(",");
+            for (let i in keywords) {
+               keywords[i] = keywords[i].trim();
+            }
+            info.ld["keywords"] = keywords;
          }
          console.log(info.ld);
          this.client.updateContent(info.id,info.ld)
