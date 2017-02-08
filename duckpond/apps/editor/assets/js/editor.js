@@ -628,6 +628,7 @@ class DuckpondEditor {
 
    editContentPart(info,name,contentType,creating,onUpdate) {
       // Check to see if it is already open.  If so, switch to that tab.
+      let baseContentType = contentType.indexOf(";")>0 ? contentType.substring(0,contentType.indexOf(";")) : contentType;
       let found = false;
       $("#editor-content-tabs li").each((i,tab) => {
          if (tab.dataset.id==info.id && tab.dataset.name==name) {
@@ -647,7 +648,7 @@ class DuckpondEditor {
       // Create a new tab with the content
 
       let tab = $(
-         SafeHTML`<li data-id="${info.id}" data-name="${name}" class="editor-content-tab uk-visible-toggle"><a href="#" title="${info.ld["genre"]}/${info.ld["name"]} ${name}"><span class="uk-icon-link uk-invisible-hover editor-closer" uk-icon="icon: close; ratio: 0.75"></span>${name}</a></li>`
+         SafeHTML`<li data-id="${info.id}" data-name="${name}" class="editor-content-tab uk-visible-toggle"><a href="#" title="${info.ld["genre"]}/${info.ld["name"]} ${name}"><span class="uk-icon-link uk-invisible-hover editor-closer" uk-icon="icon: close; ratio: 0.75"></span><span class="editor-name">${name}</span></a></li>`
       );
       let tabContent = $(
          SafeHTML`<li data-id="${info.id}" data-name="${name}" class="editor-content-tab-item">
@@ -657,7 +658,6 @@ class DuckpondEditor {
             </ul>
             <div class="editor-content-item ">
                <div class="uk-card uk-card-default uk-card-body editor-part-editor">
-               <textarea class="uk-textarea" rows="15" placeholder="Loading ..."></textarea>
                </div>
             </div>
          </li>`
@@ -685,11 +685,86 @@ class DuckpondEditor {
             50
          );
       });
-      let textarea = tabContent.find("textarea")[0];
+      let initializing = true;
+      let needsSave = false;
+      if (baseContentType=="text/html") {
+         tabContent.find(".editor-part-editor").append(SafeHTML`
+            <ul uk-tab class="editor-part-tabs">
+               <li class="uk-active">
+                  <a href="#">HTML</a>
+               </li>
+               <li>
+                  <a href="#">Preview</a>
+               </li>
+            </ul>
+            <ul class="uk-switcher uk-margin editor-part-panes">
+            <li>
+            <textarea class="uk-textarea editor-part-editor-source" rows="15" placeholder="Loading ..."></textarea>
+            </li>
+            <li>
+               <ul class="uk-iconnav uk-width-1-1 editor-part-editor-toolbar">
+                   <li><a href="#" uk-icon="icon: bold" data-action="bold"></a></li>
+                   <li><a href="#" uk-icon="icon: italic" data-action="italic"></a></li>
+                   <li><a href="#" uk-icon="icon: link" data-action="link"></a></li>
+                   <li><a href="#" uk-icon="icon: list" data-action="list"></a></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" value="insertParagraph">p</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h1>">h1</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h2>">h2</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h3>">h3</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h4>">h4</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h5>">h5</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<section>">section</button></li>
+               </ul>
+               <div class="editor-part-editor-preview uk-width-1-1" contenteditable="true"></div>
+            </li>
+            </ul>`
+         )
+         tabContent.find(".editor-part-panes").on("show", (e,tab) => {
+            if (initializing) return;
+            console.log(tab);
+            console.log(tab.toggles);
+            if ($(tab.toggles[0]).hasClass("uk-active")) {
+               // switched to source
+               $(source).text(preview.innerHTML);
+            } else {
+               // switch to preview
+               preview.innerHTML = $(source).val();
+            }
+         });
+
+         tabContent.find(".editor-part-editor-toolbar a").on("click",(e) => {
+            let action = e.currentTarget.dataset.action;
+            let range = document.getSelection().getRangeAt(0);
+            if (action=="bold") {
+               document.execCommand('bold',false,null);
+            } else if (action=="italic") {
+               document.execCommand('italic',false,null);
+            }
+            return false;
+         });
+
+      } else {
+         tabContent.find(".editor-part-editor").append(SafeHTML`
+            <textarea class="uk-textarea editor-part-editor-source" rows="15" placeholder="Loading ..."></textarea>`
+         )
+      }
+      let source = tabContent.find(".editor-part-editor-source")[0];
+      let preview = tabContent.find(".editor-part-editor-preview")[0];
+      preview.addEventListener("input",() => {
+         needsSave = true;
+         tab.find(".editor-name").text(name+" *")
+      }, false);
+      source.addEventListener("input",() => {
+         needsSave = true;
+         tab.find(".editor-name").text(name+" *")
+      }, false);
       tabContent.find(".editor-content-item-save").click(() => {
          console.log(`Save content part ${info.id} ${name}`);
+         let content = $(tabContent.find(".editor-part-tabs li")[0]).hasClass("uk-active") ?
+            $(source).val() :
+            preview.innerHTML;
          if (creating) {
-            this.client.createContentResource(info.id,name,"hasPart",contentType,$(textarea).val())
+            this.client.createContentResource(info.id,name,"hasPart",contentType,content)
                .then((obj) => {
                   UIkit.notification("<span uk-icon='icon: check'></span> Content part created.");
                   if (onUpdate) {
@@ -701,14 +776,16 @@ class DuckpondEditor {
                   console.log(obj)
                   info.ld.hasPart.push(obj)
                   creating = false
+                  tab.find(".editor-name").text(name)
                })
                .catch((status) => {
                   this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
                });
          } else {
-            this.client.updateContentResource(info.id,name,contentType,$(textarea).val())
+            this.client.updateContentResource(info.id,name,contentType,content)
                .then(() => {
                   UIkit.notification("<span uk-icon='icon: check'></span> Content part saved.");
+                  tab.find(".editor-name").text(name)
                   if (onUpdate) {
                      onUpdate(name,contentType,creating);
                   }
@@ -725,16 +802,21 @@ class DuckpondEditor {
          50
       );
       if (creating) {
-         if (contentType=="text/html") {
-            $(textarea).text("<article><h1>Title</h1></article>");
-         } else if (contentType=="text/markdown") {
-            $(textarea).text("# Title");
+         tab.find(".editor-name").text(name+" *")
+         if (baseContentType=="text/html") {
+            $(source).text("<article><h1>Title</h1></article>");
+         } else if (baseContentType=="text/markdown") {
+            $(source).text("# Title");
          }
-         contentType = contentType + "; charset=UTF-8";
+         contentType = baseContentType + "; charset=UTF-8";
       } else {
          this.client.getContentResource(info.id,name)
             .then((text) => {
-               $(textarea).text(text);
+               initializing = false;
+               $(source).text(text);
+               if (preview!=undefined) {
+                  $(preview).append(text);
+               }
             })
             .catch((status) => {
                this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);

@@ -62,3 +62,13 @@ body > main {
 .editor-properties-standard .uk-input[name=datePublished] {
    width: 20em;
 }
+
+.uk-iconnav .uk-button-small {
+   line-height: 20px;
+}
+
+.editor-part-editor-toolbar {
+   border-bottom: 1px solid #e5e5e5;
+   padding-bottom: 5px;
+   margin-bottom: 1em;
+}
