@@ -1,6 +1,6 @@
 from flask import render_template, redirect, session, request, url_for, escape, flash, g
 from functools import wraps
-from .app import app, users
+from .app import app
 from .forms import LoginForm
 from . import model
 
@@ -13,18 +13,19 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
    if 'username' in session:
-      username = session['username']
-      if users.validate(username):
-         return redirect(url_for('index'))
+      redirect(url_for('index'))
    form = LoginForm()
    if form.validate_on_submit():
-      g.user = users.login(form.username.data,form.password.data)
+      username = form.username.data
+      password = form.password.data
+      if app.config['AUTH_SERVICE'].authenticate(username,password):
+         g.user = app.config['AUTH_SERVICE'].getUser(username)
       if g.user is not None:
-         flash('Login for {} successful.'.format(form.username.data))
-         session['username'] = form.username.data
+         flash('Login for {} successful.'.format(username))
+         session['username'] = username
          return redirect('/')
       else:
-         flash('Login for {} failed.'.format(form.username.data))
+         flash('Login for {} failed.'.format(username))
    return render_template('login.html',
                            title='Sign In',
                            form=form)

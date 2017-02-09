@@ -3,7 +3,7 @@ import json
 import shutil
 from tempfile import TemporaryFile
 from flask import session, abort
-from .app import app, users
+from .app import app
 
 def getAuth():
    user = app.config['AUTH_SERVICE'].getUser(session['username'])
