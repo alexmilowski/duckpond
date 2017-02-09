@@ -716,17 +716,18 @@ class DuckpondEditor {
             console.log(body);
             $(body).append(SafeHTML`
                <ul class="uk-iconnav uk-width-1-1 editor-part-editor-toolbar">
-                   <li><a href="#" uk-icon="icon: bold" data-action="bold"></a></li>
-                   <li><a href="#" uk-icon="icon: italic" data-action="italic"></a></li>
-                   <li><a href="#" uk-icon="icon: link" data-action="link"></a></li>
-                   <li><a href="#" uk-icon="icon: list" data-action="list"></a></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" value="insertParagraph">p</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h1>">h1</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h2>">h2</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h3>">h3</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h4>">h4</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<h5>">h5</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<section>">section</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="bold"><span uk-icon="icon: bold"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="italic"><span uk-icon="icon: italic"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="createlink" data-prompt="URL?"><span uk-icon="icon: link" data-action="link"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="insertunorderedlist"><span uk-icon="icon: list"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="insertorderedlist"><span uk-icon="icon: hashtag"></span><span uk-icon="icon: list"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<p>">p</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h1>">h1</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h2>">h2</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h3>">h3</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h4>">h4</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h5>">h5</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<section>">section</button></li>
                </ul>
                <div class="editor-part-editor-preview uk-width-1-1" contenteditable="true"></div>
             `);
@@ -735,6 +736,43 @@ class DuckpondEditor {
                needsSave = true;
                tab.find(".editor-name").text(name+" *")
             }, false);
+            $(body).find(".editor-part-editor-toolbar a").on("click",(e) => {
+               let action = e.currentTarget.dataset.action;
+               let range = iframe.contentDocument.getSelection().getRangeAt(0);
+               iframe.contentDocument.execCommand(action,false,null);
+               return false;
+            });
+            $(body).find(".editor-part-editor-toolbar button").on("click",(e) => {
+               let action = e.currentTarget.dataset.action;
+               let pos = action.indexOf(";");
+               let command = pos<0 ? action : action.substring(0,pos);
+               let value = pos<0 ? null : action.substring(pos+1);
+
+               let edit = () => {
+                  if (command=="createlink") {
+                     let link = iframe.contentDocument.createElement("a");
+                     link.setAttribute("href",value);
+                     iframe.contentDocument.getSelection().getRangeAt(0).surroundContents(link);
+                  } else if (command=="surround") {
+                     console.log(value);
+                     let container = iframe.contentDocument.createElement(value);
+                     iframe.contentDocument.getSelection().getRangeAt(0).surroundContents(container);
+                  } else {
+                     let range = iframe.contentDocument.getSelection().getRangeAt(0);
+                     iframe.contentDocument.execCommand(command,false,value);
+                  }
+               }
+               if (e.currentTarget.dataset.prompt!=undefined) {
+                  UIkit.modal.prompt(e.currentTarget.dataset.prompt,"").then((url) => {
+                     value = url;
+                     edit();
+                  });
+               } else {
+                  edit();
+               }
+               return false;
+            });
+
          });
          tabContent.find(".editor-part-panes").on("show", (e,tab) => {
             if (initializing) return;
@@ -747,17 +785,6 @@ class DuckpondEditor {
                // switch to preview
                preview.innerHTML = $(source).val();
             }
-         });
-
-         tabContent.find(".editor-part-editor-toolbar a").on("click",(e) => {
-            let action = e.currentTarget.dataset.action;
-            let range = document.getSelection().getRangeAt(0);
-            if (action=="bold") {
-               document.execCommand('bold',false,null);
-            } else if (action=="italic") {
-               document.execCommand('italic',false,null);
-            }
-            return false;
          });
 
       } else {
