@@ -65,6 +65,7 @@ class S3ResourceService:
       self.bucket_name = bucket
       self.bucket_domains = bucket_domains
       self.tmpdir = tmpdir
+      self.readSize = 32*1024
 
    def parseLocation(self,url):
       spec = urlparse(url)
@@ -79,7 +80,14 @@ class S3ResourceService:
       domain,path = self.parseLocation(url)
       try:
          response = self.s3.get_object(Bucket=self.getBucket(domain),Key=path)
-         return (200,response['Body'],response['ContentLength'])
+         def readBody():
+            while True:
+               data = response['Body'].read(self.readSize);
+               if len(data)>0:
+                  yield data
+               else:
+                  break
+         return (200,readBody(),response['ContentLength'])
       except botocore.exceptions.ClientError as e:
          if e.response['Error']['Code'] == "404":
             return (404,None,None)

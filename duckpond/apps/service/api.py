@@ -635,7 +635,7 @@ def content_item_resource_property(id,resource,property):
       if status!=200:
          abort(status)
       response = Response(stream_with_context(data),mimetype=literal(contentType))
-      response.headers.add('Content-Length',size)
+      response.headers['Content-Length'] = size
       return response
 
    if request.method == 'DELETE':
