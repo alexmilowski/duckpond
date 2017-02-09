@@ -72,3 +72,15 @@ body > main {
    padding-bottom: 5px;
    margin-bottom: 1em;
 }
+
+.editor-part-editor-iframe {
+   height: 100%;
+}
+
+main.editor-html-editor {
+   margin-top: 0em;
+}
+
+.editor-part-editor-source {
+   height: 100%;
+}

@@ -687,6 +687,8 @@ class DuckpondEditor {
       });
       let initializing = true;
       let needsSave = false;
+      let source = null;
+      let preview = null;
       if (baseContentType=="text/html") {
          tabContent.find(".editor-part-editor").append(SafeHTML`
             <ul uk-tab class="editor-part-tabs">
@@ -702,6 +704,17 @@ class DuckpondEditor {
             <textarea class="uk-textarea editor-part-editor-source" rows="15" placeholder="Loading ..."></textarea>
             </li>
             <li>
+               <iframe class="uk-width-1-1 editor-part-editor-iframe" src="/assets/content/editor.html">
+               </iframe>
+            </li>
+            </ul>`
+         )
+         let iframe = tabContent.find(".editor-part-editor-iframe")[0];
+         $(iframe.contentDocument).ready(() => {
+            $($(iframe.contentDocument).find("head")[0]).append(SafeHTML`<base href="/data/content/${info.id}/">`)
+            let body = $(iframe.contentDocument).find("main")[0];
+            console.log(body);
+            $(body).append(SafeHTML`
                <ul class="uk-iconnav uk-width-1-1 editor-part-editor-toolbar">
                    <li><a href="#" uk-icon="icon: bold" data-action="bold"></a></li>
                    <li><a href="#" uk-icon="icon: italic" data-action="italic"></a></li>
@@ -716,9 +729,13 @@ class DuckpondEditor {
                    <li><button class="uk-button uk-button-default uk-button-small" value="formatBlock;<section>">section</button></li>
                </ul>
                <div class="editor-part-editor-preview uk-width-1-1" contenteditable="true"></div>
-            </li>
-            </ul>`
-         )
+            `);
+            preview = $(body).find(".editor-part-editor-preview")[0];
+            preview.addEventListener("input",() => {
+               needsSave = true;
+               tab.find(".editor-name").text(name+" *")
+            }, false);
+         });
          tabContent.find(".editor-part-panes").on("show", (e,tab) => {
             if (initializing) return;
             console.log(tab);
@@ -748,12 +765,7 @@ class DuckpondEditor {
             <textarea class="uk-textarea editor-part-editor-source" rows="15" placeholder="Loading ..."></textarea>`
          )
       }
-      let source = tabContent.find(".editor-part-editor-source")[0];
-      let preview = tabContent.find(".editor-part-editor-preview")[0];
-      preview.addEventListener("input",() => {
-         needsSave = true;
-         tab.find(".editor-name").text(name+" *")
-      }, false);
+      source = tabContent.find(".editor-part-editor-source")[0];
       source.addEventListener("input",() => {
          needsSave = true;
          tab.find(".editor-name").text(name+" *")
