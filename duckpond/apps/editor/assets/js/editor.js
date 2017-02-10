@@ -709,11 +709,16 @@ class DuckpondEditor {
             </li>
             </ul>`
          )
-         let iframe = tabContent.find(".editor-part-editor-iframe")[0];
-         $(iframe.contentDocument).ready(() => {
+         // TODO: this timeout is a hack!  ready(iframe.contentDocument) didn't work
+         let setupEditor = () => {
+            let iframe = tabContent.find(".editor-part-editor-iframe")[0];
+            //console.log(iframe);
             $($(iframe.contentDocument).find("head")[0]).append(SafeHTML`<base href="/data/content/${info.id}/">`)
             let body = $(iframe.contentDocument).find("main")[0];
-            console.log(body);
+            if (body==undefined) {
+               setTimeout(setupEditor,250);
+               return;
+            }
             $(body).append(SafeHTML`
                <ul class="uk-iconnav uk-width-1-1 editor-part-editor-toolbar">
                    <li><button class="uk-button uk-button-default uk-button-small" data-action="bold"><span uk-icon="icon: bold"></span></button></li>
@@ -773,7 +778,9 @@ class DuckpondEditor {
                return false;
             });
 
-         });
+         };
+         setTimeout(setupEditor,250);
+
          tabContent.find(".editor-part-panes").on("show", (e,tab) => {
             if (initializing) return;
             console.log(tab);
@@ -972,7 +979,7 @@ class DuckpondClient {
 
    getContents() {
       return new Promise((resolve,reject) => {
-         fetch(this.service + "content/").then(
+         fetch(this.service + "content/",{credentials: 'include'}).then(
             (response) => {
                if (response.ok) {
                   response.json().then((data) => {
@@ -990,6 +997,7 @@ class DuckpondClient {
       return new Promise((resolve,reject) => {
          fetch(this.service + "content/",{
              method: 'post',
+             credentials: 'include',
              headers: {
                "Content-type": "application/ld+json; charset=UTF-8"
              },
@@ -1018,7 +1026,8 @@ class DuckpondClient {
    deleteContent(id) {
       return new Promise((resolve,reject) => {
          fetch(this.service + "content/" + id + "/",{
-             method: 'delete'
+             method: 'delete',
+             credentials: 'include'
           }).then(
              (response) => {
                 if (response.ok) {
@@ -1034,7 +1043,7 @@ class DuckpondClient {
 
    getContent(id) {
       return new Promise((resolve,reject) => {
-         fetch(this.service + "content/" + id + "/").then(
+         fetch(this.service + "content/" + id + "/",{credentials: 'include'}).then(
             (response) => {
                if (response.ok) {
                   response.json().then((data) => {
@@ -1052,6 +1061,7 @@ class DuckpondClient {
       return new Promise((resolve,reject) => {
          fetch(this.service + "content/" + id + "/",{
              method: 'put',
+             credentials: 'include',
              headers: {
                "Content-type": "application/ld+json; charset=UTF-8"
              },
@@ -1073,7 +1083,7 @@ class DuckpondClient {
 
    getContentResource(id,resource) {
       return new Promise((resolve,reject) => {
-         fetch(this.service + "content/" + id + "/" + resource).then(
+         fetch(this.service + "content/" + id + "/" + resource,{credentials: 'include'}).then(
             (response) => {
                if (response.ok) {
                   response.text().then((data) => {
@@ -1093,6 +1103,7 @@ class DuckpondClient {
       return new Promise((resolve,reject) => {
          fetch(this.service + "content/" + id + "/" + resource + ";" + property,{
             method : 'put',
+            credentials: 'include',
             headers : headers,
             body: data
          }).then(
@@ -1114,6 +1125,7 @@ class DuckpondClient {
       return new Promise((resolve,reject) => {
          fetch(this.service + "content/" + id + "/" + resource,{
             method : 'put',
+            credentials: 'include',
             headers : headers,
             body: data
          }).then(
@@ -1130,7 +1142,8 @@ class DuckpondClient {
    deleteContentResource(id,name) {
       return new Promise((resolve,reject) => {
          fetch(this.service + "content/" + id + "/" + name,{
-             method: 'delete'
+             method: 'delete',
+             credentials: 'include'
           }).then(
              (response) => {
                 if (response.ok) {
