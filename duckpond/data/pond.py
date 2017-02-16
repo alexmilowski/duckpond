@@ -189,7 +189,7 @@ class Pond:
             return None
          subject = strip(data['values'][0][0])
          title = literal(data['values'][0][1])
-         summary = literal(data['values'][0][2])
+         summary = literal(data['values'][0][2]) if data['values'][0][2] is not None else None
          dateTime = strip(data['values'][0][3])
          nameValue = strip(data['values'][0][4])
          genreValue = strip(data['values'][0][5])
