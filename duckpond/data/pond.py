@@ -293,7 +293,7 @@ class Pond:
       nameFacet = self.facet('name',name)
       genreFacet = self.facet('genre',genre)
       expr = '?s rdf:type {0}; {1} ?ordering; {2} ?title; {4} ?name; {5} ?genre; . optional {{ ?s {3} ?summary . }}'.format(entityType,orderFacet,titleFacet,summaryFacet,nameFacet,genreFacet) \
-             + ' FILTER( ?ordering ' + ('>' if previous else '<') + ' ' + orderFacet.toLiteral(value) + ' )'
+             + ' FILTER( ?ordering ' + ('<' if previous else '>') + ' ' + orderFacet.toLiteral(value) + ' )'
       if criteria is not None:
          expr = expr + criteriaConditions(self,criteria)
       q = SPARQL() \
