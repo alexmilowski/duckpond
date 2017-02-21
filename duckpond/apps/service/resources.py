@@ -82,10 +82,11 @@ class S3ResourceService:
          response = self.s3.get_object(Bucket=self.getBucket(domain),Key=path)
          def readBody():
             while True:
-               data = response['Body'].read(self.readSize);
+               data = response['Body'].read(self.readSize)
                if len(data)>0:
                   yield data
                else:
+                  response['Body'].close()
                   break
          return (200,readBody(),response['ContentLength'])
       except botocore.exceptions.ClientError as e:
