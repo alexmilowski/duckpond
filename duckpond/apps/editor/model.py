@@ -63,13 +63,13 @@ def updateContentResource(id,name,content_type,data):
       shutil.copyfileobj(data,cached)
       size = cached.tell()
       cached.seek(0)
-      headers = {'Content-Type' : content_type, 'Content-Length' : size}
+      headers = {'Content-Type' : content_type, 'Content-Length' : str(size)}
       response = requests.put(url,auth=getAuth(),data=cached,headers=headers)
       return (response.status_code,response.iter_content(chunk_size=10*1024),response.headers.get('content-type'))
 
 def uploadContentResource(id,property,name,content_type,content_length,data):
    url = app.config['SERVICE'] + 'content/' + id + '/' + name + ";" + property
-   headers = {'Content-Type' : content_type, 'Content-Length' : content_length}
+   headers = {'Content-Type' : content_type, 'Content-Length' : str(content_length)}
    response = requests.put(url,auth=getAuth(),data=data,headers=headers)
    return (response.status_code,response.iter_content(chunk_size=10*1024),response.headers.get('content-type'))
 
