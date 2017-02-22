@@ -850,7 +850,7 @@ class DuckpondEditor {
       if (creating) {
          tab.find(".editor-name").text(name+" *")
          if (baseContentType=="text/html") {
-            $(source).text("<article><h1>Title</h1></article>");
+            $(source).text("<article><p>Your text goes here...</p></article>");
          } else if (baseContentType=="text/markdown") {
             $(source).text("# Title");
          }
