@@ -253,7 +253,14 @@ class Pond:
             headers['Authorization'] = 'Bearer ' + self.resourceToken
          req = requests.get(uri,auth=self.resourceAuth,headers=headers)
          if (req.status_code == 200):
-            return req.text
+            contentType = req.headers.get('Content-Type')
+            encoding = 'UTF-8'
+            if contentType is not None:
+               param = contentType.find('charset=')
+               if param>0:
+                  encoding = contentType[param+8:]
+            text = req.content.decode(encoding)
+            return text
          else:
             raise IOError('Cannot get <{}>, status={}'.format(uri,req.status_code))
       elif uri[0:7]=='file://':
