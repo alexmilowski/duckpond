@@ -227,7 +227,7 @@ class Pond:
             return None
          subject = strip(data['values'][0][0])
          title = literal(data['values'][0][1])
-         summary = literal(data['values'][0][2])
+         summary = literal(data['values'][0][2]) if data['values'][0][2] is not None else None
          dateTime = strip(data['values'][0][3])
          date,time = dateTime.split('T') # Need to check that is xsd:dateTime
          genreValue = strip(data['values'][0][4])
@@ -323,7 +323,7 @@ class Pond:
             row = values[0]
             subjectValue = strip(row[0])
             titleValue = literal(row[1])
-            summaryValue = literal(row[2])
+            summaryValue = literal(row[2]) if row[2] is not None else None
             date,time = strip(row[3]).split('T')
             nameValue = strip(row[4])
             genreValue = strip(row[5])
@@ -333,7 +333,7 @@ class Pond:
             for row in values:
                subjectValue = strip(row[0])
                titleValue = literal(row[1])
-               summaryValue = literal(row[2])
+               summaryValue = literal(row[2]) if row[2] is not None else None
                date,time = strip(row[3]).split('T')
                nameValue = strip(row[4])
                genreValue = strip(row[5])
@@ -372,7 +372,7 @@ class Pond:
             return None
          subject = strip(values[0][0])
          title = literal(values[0][1])
-         summary = literal(values[0][2])
+         summary = literal(values[0][2]) if values[0][2] is not None else None
          dateTime = strip(values[0][3])
          date,time = dateTime.split('T') # Need to check that is xsd:dateTime
          nameValue = strip(values[0][4])
@@ -453,7 +453,7 @@ class Pond:
          for row in data['values']:
             subjectValue = strip(row[0])
             titleValue = literal(row[1])
-            summaryValue = literal(row[2])
+            summaryValue = literal(row[2]) if row[2] is not None else None
             date,time = strip(row[3]).split('T')
             nameValue = strip(row[4])
             genreValue = strip(row[5])
