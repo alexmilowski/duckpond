@@ -1,8 +1,11 @@
 import requests
 import json,io,os
+import logging
 from enum import Enum
 import urllib
 from .sparql import SPARQL
+
+logger = logging.getLogger('duckpond.pond')
 
 def strip(value):
    if value is None:
@@ -44,11 +47,11 @@ orgSchema = [
    Facet('summary','schema:description'),
    Facet('name','schema:name'),
    Facet('genre','schema:genre'),
-   Facet('resource','schema:hasPart','xsd:anyURI'),
+   Facet('resource','schema:hasPart','schema:MediaObject'),
    Facet('category','schema:keywords'),
    Facet('contentUrl','schema:contentUrl'),
    Facet('fileFormat','schema:fileFormat'),
-   Facet('associatedMedia','schema:associatedMedia','xsd:anyURI'),
+   Facet('associatedMedia','schema:associatedMedia','schema:MediaObject'),
 
    Facet('Article','schema:Article'),
    Facet('MediaObject','schema:MediaObject'),
@@ -177,7 +180,8 @@ class Pond:
             .fromGraphs(self.graphs) \
             .where(expr) \
             .orderBy('desc(?ordering)')
-      #print(q)
+      if logger.isEnabledFor(logging.DEBUG):
+         logger.debug(str(q))
       params = self.mergeParameters({'limit':1,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -215,7 +219,8 @@ class Pond:
             .fromGraphs(self.graphs) \
             .where(expr) \
             .orderBy('desc(?ordering)')
-      #print(q)
+      if logger.isEnabledFor(logging.DEBUG):
+         logger.debug(str(q))
       params = self.mergeParameters({'limit':1,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -308,8 +313,9 @@ class Pond:
             .select(['s','title','summary','ordering','name','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr ) \
-            .orderBy('desc(?ordering)')
-      #print(q)
+            .orderBy('desc(?ordering)' if previous else 'asc(?ordering)')
+      if logger.isEnabledFor(logging.DEBUG):
+         logger.debug(str(q))
       params = self.mergeParameters({'limit':limit,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -360,7 +366,8 @@ class Pond:
             .select(['s','title','summary','ordering','name','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr)
-      #print(q)
+      if logger.isEnabledFor(logging.DEBUG):
+         logger.debug(str(q))
       params = self.mergeParameters({'limit':1,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -392,7 +399,8 @@ class Pond:
             .where(expr) \
             .groupBy('?category') \
             .orderBy('desc(?count)')
-      #print(q)
+      if logger.isEnabledFor(logging.DEBUG):
+         logger.debug(str(q))
       params = self.mergeParameters({'limit':100,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -416,6 +424,8 @@ class Pond:
             .select(['category']) \
             .fromGraphs(self.graphs) \
             .where(expr)
+      if logger.isEnabledFor(logging.DEBUG):
+         logger.debug(str(q))
       params = self.mergeParameters({'limit':100,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -443,6 +453,8 @@ class Pond:
             .select(['s','title','summary','date','name','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr)
+      if logger.isEnabledFor(logging.DEBUG):
+         logger.debug(str(q))
       params = self.mergeParameters({'limit':limit,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -464,32 +476,64 @@ class Pond:
 
    def getEntityResource(self,subject,singleton = False,resource=None,contentUrl=None,fileFormat=None,criteria=None):
       resourceFacet = self.facet('resource',resource)
-      contentUrlFacet = self.facet('contentUrl',contentUrl)
-      fileFormatFacet = self.facet('fileFormat',fileFormat)
-      expr = '<{0}> {1} ?r . ?r rdf:type ?type; {2} ?url; {3} ?format .'.format(subject,resourceFacet,contentUrlFacet,fileFormatFacet)
-      if criteria is not None:
-         expr = expr + criteriaConditions(self,criteria,subjectVar='r')
-      q = SPARQL() \
-            .start(self.prefixes) \
-            .select(['url','format','type']) \
-            .fromGraphs(self.graphs) \
-            .where(expr)
-      params = self.mergeParameters({'query':str(q)})
-      #print(q)
-      req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
+      if resourceFacet.type=='schema:MediaObject':
+         contentUrlFacet = self.facet('contentUrl',contentUrl)
+         fileFormatFacet = self.facet('fileFormat',fileFormat)
+         expr = '<{0}> {1} ?r . ?r rdf:type ?type; {2} ?url; {3} ?format .'.format(subject,resourceFacet,contentUrlFacet,fileFormatFacet)
+         if criteria is not None:
+            expr = expr + criteriaConditions(self,criteria,subjectVar='r')
+         q = SPARQL() \
+               .start(self.prefixes) \
+               .select(['url','format','type']) \
+               .fromGraphs(self.graphs) \
+               .where(expr)
+         if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(str(q))
+         params = self.mergeParameters({'query':str(q)})
+         req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
 
-      if (req.status_code>=200 or req.status_code<300):
-         data = json.loads(req.text)
-         values = data['values']
-         if len(values)==0:
-            return None
-         elif len(values)==1 and not singleton:
-            row = values[0]
-            return (strip(row[0]),strip(row[1]),strip(row[2]))
+         if (req.status_code>=200 or req.status_code<300):
+            data = json.loads(req.text)
+            values = data['values']
+            if len(values)==0:
+               return None
+            elif len(values)==1 and not singleton:
+               row = values[0]
+               return (strip(row[0]),strip(row[1]),strip(row[2]))
+            else:
+               result = []
+               for row in values:
+                  result.append((strip(row[0]),strip(row[1]),strip(row[2])))
+               return result
          else:
-            result = []
-            for row in values:
-               result.append((strip(row[0]),strip(row[1]),strip(row[2])))
-            return result
+            raise IOError('Cannot get data from uri <{}>, status={}'.format(self.service,req.status_code))
+      elif resourceFacet.type=='xsd:anyURI':
+         expr = '<{0}> {1} ?url.'.format(subject,resourceFacet)
+         if criteria is not None:
+            expr = expr + criteriaConditions(self,criteria,subjectVar='r')
+         q = SPARQL() \
+               .start(self.prefixes) \
+               .select(['url']) \
+               .fromGraphs(self.graphs) \
+               .where(expr)
+         if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(str(q))
+         params = self.mergeParameters({'query':str(q)})
+         req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
+         if (req.status_code>=200 or req.status_code<300):
+            data = json.loads(req.text)
+            values = data['values']
+            if len(values)==0:
+               return None
+            elif len(values)==1 and not singleton:
+               row = values[0]
+               return (strip(row[0]),None,None)
+            else:
+               result = []
+               for row in values:
+                  result.append((strip(row[0]),None,None))
+               return result
+         else:
+            raise IOError('Cannot get data from uri <{}>, status={}'.format(self.service,req.status_code))
       else:
-         raise IOError('Cannot get data from uri <{}>, status={}'.format(self.service,req.status_code))
+         raise IOError('Cannot determine resource facet query, type {}'.format(resourceFacet.type))
