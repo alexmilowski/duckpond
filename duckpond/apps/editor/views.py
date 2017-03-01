@@ -1,6 +1,7 @@
-from flask import render_template, redirect, session, request, url_for, escape, flash, g, make_response
+from flask import render_template, redirect, session, request, url_for, escape, flash, g, make_response, stream_with_context, Response
 from functools import wraps
 import json
+import requests
 from .app import app
 from .forms import LoginForm
 from . import model
@@ -45,3 +46,14 @@ def logout():
     # remove the username from the session if it's there
     session.clear()
     return redirect(url_for('index'))
+
+@app.route('/proxy/<name>/<path:path>')
+def home(name,path):
+   proxies = app.config.get('PROXIES')
+   if proxies is None:
+      abort(404)
+   base = proxies.get(name)
+   if base is None:
+      abort(404)
+   req = requests.get(base + path, stream = True)
+   return Response(stream_with_context(req.iter_content()), content_type = req.headers['content-type'])
