@@ -63,6 +63,17 @@ class DuckpondEditor {
    }
 
    bind() {
+      fetch("/config.json",{credentials: 'include'}).then(
+         (response) => {
+            if (response.ok) {
+               response.json().then((data) => {
+                  this.config = data;
+               });
+            } else {
+               this.error(`Cannot get configuration, status=${response.status}`);
+            }
+         }
+      );
       $("#editor-create-content").click(
          (e) => {
             let genreInput = $("#editor-form-content-create input[name=genre]");
@@ -444,7 +455,7 @@ class DuckpondEditor {
       //tabContent.find(".editor-content-item")
       this.client.getContent(id)
          .then((data) => {
-            console.log(data);
+            //console.log(data);
             this.addContentEdit(id,data,tabContent)
          })
          .catch((status) => {
@@ -942,6 +953,10 @@ class DuckpondEditor {
       let needsSave = false;
       let source = null;
       let preview = null;
+      let markNeedsSaved = () => {
+         needsSave = true;
+         tab.find(".editor-name").text(name+" *")
+      }
       if (baseContentType=="text/html") {
          tabContent.find(".editor-part-editor").append(SafeHTML`
             <ul uk-tab class="editor-part-tabs">
@@ -957,6 +972,7 @@ class DuckpondEditor {
                <ul class="uk-iconnav uk-width-1-1 editor-part-editor-source-toolbar uk-margin-bottom">
                <li><button class="uk-button uk-button-default uk-button-small" data-action="wrap" title="Wrap document (add DOCTYPE)" uk-tooltip><span uk-icon="icon: shrink"></span></button></li>
                <li><button class="uk-button uk-button-default uk-button-small" data-action="unwrap" title="Unwrap document (remove DOCTYPE)" uk-tooltip><span uk-icon="icon: expand"></span></button></li>
+               <li><button class="uk-button uk-button-default uk-button-small" data-action="article" title="Make article" uk-tooltip>Article</button></li>
                </ul>
                <textarea class="uk-textarea editor-part-editor-source" rows="15" placeholder="Loading ..."></textarea>
             </li>
@@ -967,10 +983,9 @@ class DuckpondEditor {
             </ul>`
          )
 
-         console.log(tabContent.find(".editor-part-editor-source-toolbar button"));
          tabContent.find(".editor-part-editor-source-toolbar button").on("click",(e) => {
             let action = e.currentTarget.dataset.action;
-            console.log(action);
+            //console.log(action);
             if (action=="check") {
                let parser = new DOMParser();
                let doc = parser.parseFromString($(source).val(), "text/html");
@@ -979,24 +994,45 @@ class DuckpondEditor {
                if ($(source).val().indexOf("<!DOCTYPE")>=0) {
                   return;
                }
-               $(source).val(
+               $(source).text(
 `<!DOCTYPE html>
 <html>
-<head><title>title</title></head>
+<head>
+<title>title</title>
+${this.config['wrap-header']}
+</head>
 <body>
 ${$(source).val()}
 </body>
 </html>
 `
                );
+               markNeedsSaved()
             } else if (action=="unwrap") {
                let parser = new DOMParser();
                let doc = parser.parseFromString($(source).val(), "text/html");
-               console.log(doc.documentElement.tagName);
                if (doc.documentElement.tagName!='HTML') {
                   return;
                }
-               $(source).val($(doc).find("body").html());
+               $(source).text($(doc).find("body").html());
+               markNeedsSaved()
+            } else if (action=="article") {
+               let parser = new DOMParser();
+               let doc = parser.parseFromString($(source).val(), "text/html");
+               if (doc.documentElement.tagName=='ARTICLE') {
+                  return;
+               } else if (doc.documentElement.tagName=='HTML') {
+                  let markup = $(doc).find("body").html().trim();
+                  if (markup.indexOf("<article>")==0 || markup.indexOf("<article ")==0) {
+                     $(source).text(markup);
+                  } else {
+                     $(source).text(`<article>${markup}</article>`);
+                  }
+                  markNeedsSaved()
+               } else {
+                  $(source).val(`<article>${$(source).val()}</article>`);
+                  markNeedsSaved()
+               }
             }
          });
          // TODO: this timeout is a hack!  ready(iframe.contentDocument) didn't work
@@ -1029,13 +1065,13 @@ ${$(source).val()}
             `);
             preview = $(body).find(".editor-part-editor-preview")[0];
             preview.addEventListener("input",() => {
-               needsSave = true;
-               tab.find(".editor-name").text(name+" *")
+               markNeedsSaved()
             }, false);
             $(body).find(".editor-part-editor-toolbar a").on("click",(e) => {
                let action = e.currentTarget.dataset.action;
                let range = iframe.contentDocument.getSelection().getRangeAt(0);
                iframe.contentDocument.execCommand(action,false,null);
+               markNeedsSaved()
                return false;
             });
             $(body).find(".editor-part-editor-toolbar button").on("click",(e) => {
@@ -1057,6 +1093,7 @@ ${$(source).val()}
                      let range = iframe.contentDocument.getSelection().getRangeAt(0);
                      iframe.contentDocument.execCommand(command,false,value);
                   }
+                  markNeedsSaved()
                }
                if (e.currentTarget.dataset.prompt!=undefined) {
                   UIkit.modal.prompt(e.currentTarget.dataset.prompt,"").then((url) => {
@@ -1074,10 +1111,12 @@ ${$(source).val()}
 
          tabContent.find(".editor-part-panes").on("show", (e,tab) => {
             if (initializing) return;
-            console.log(tab);
-            console.log(tab.toggles);
+            //console.log(tab);
+            //console.log(tab.toggles);
             if ($(tab.toggles[0]).hasClass("uk-active")) {
                // switched to source
+               //console.log(preview.innerHTML);
+               //console.log(source);
                $(source).text(preview.innerHTML);
             } else {
                // switch to preview

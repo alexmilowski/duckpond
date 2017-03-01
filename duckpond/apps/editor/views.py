@@ -1,5 +1,6 @@
-from flask import render_template, redirect, session, request, url_for, escape, flash, g
+from flask import render_template, redirect, session, request, url_for, escape, flash, g, make_response
 from functools import wraps
+import json
 from .app import app
 from .forms import LoginForm
 from . import model
@@ -9,6 +10,15 @@ def index():
    return render_template('home.html',
                            title='Duckpond Content Editor',
                            username=session['username'])
+@app.route('/config.json')
+def config():
+   config = app.config.get('EDITOR_CONFIG')
+   if config is None:
+      config = { 'wrap-header' : ''}
+   response = make_response(json.dumps(config))
+   response.headers['Content-Type'] = "application/json; charset=utf-8"
+   return response
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
