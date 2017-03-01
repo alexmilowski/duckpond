@@ -79,9 +79,12 @@ def content_item_resource_upload(id,property):
    #print(request.headers['Content-Type'])
    #print(request.files)
    file = request.files['file']
-   print(file.filename)
-   print(file.content_type)
-   print(file.content_length)
+   #print(file.filename)
+   #print(file.content_type)
+   #print(file.content_length)
+   uploadContentType = file.content_type
+   if file.content_type.startswith("text/") and file.content_type.find("charset=")<0:
+      uploadContentType = file.content_type+"; charset=UTF-8"
    uploadDir = app.config['UPLOAD_STAGING'] if 'UPLOAD_STAGING' in app.config else 'tmp'
    os.makedirs(uploadDir,exist_ok=True)
    staged = os.path.join(uploadDir, file.filename)
@@ -90,7 +93,7 @@ def content_item_resource_upload(id,property):
    responseJSON = None
    contentType = None
    with open(staged,"rb") as data:
-      status,responseJSON,contentType = model.uploadContentResource(id,property,file.filename,file.content_type,os.path.getsize(staged),data)
+      status,responseJSON,contentType = model.uploadContentResource(id,property,file.filename,uploadContentType,os.path.getsize(staged),data)
    os.unlink(staged)
    if status==200 or status==201:
       return Response(stream_with_context(responseJSON),status=status,content_type = contentType)
