@@ -1,0 +1,38 @@
+@media screen and (max-device-width: 480px) {
+
+body {
+   font-size: 14pt;
+   border: 1px solid black;
+}
+
+header > h1 {
+   width: auto;
+}
+
+header .controls {
+   display: none;
+}
+
+article {
+   min-width: 100px;
+   margin-right: 0px;
+}
+
+aside {
+   float: none;
+   width: 75%;
+   min-width: auto;
+   margin-top: 0em;
+   margin-left: 0em;
+   margin-right: 0.5em;
+   margin-bottom: 0.5em;
+   padding-right: 1em;
+   background-color: rgb(250,250,250);
+   border: 1px solid rgb(200,200,200);
+}
+
+aside > section {
+   margin-bottom: 0em;
+}
+
+}

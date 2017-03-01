@@ -1,0 +1,95 @@
+<html>
+<head>
+<title>
+{% if entry == None %}
+   {{ title|escape }}
+{% else %}
+   {{ entry['title']|escape }}
+{% endif %}
+</title>
+{% if not base == None %}
+<base href="{{base}}"/>
+{% endif %}
+{% if not entry == None %}
+<meta property="og:url"           content="{{siteURL|escape}}{{path|escape}}" />
+<meta property="og:type"          content="website" />
+<meta property="og:title"         content="{{entry['title']|escape}}" />
+<meta property="og:description"   content="{{entry['summary']|escape}}" />
+{% endif %}
+
+<meta name=viewport content="width=device-width, initial-scale=0.8125"/>
+<link rel="stylesheet" type="text/css" href="/assets/css/style.css"/>
+<link rel="stylesheet" type="text/css" href="/assets/css/print.css"/>
+<link rel="stylesheet" type="text/css" href="/assets/css/media.css"/>
+<script type="text/javascript">
+var page_url = "{{siteURL|escape}}{{path|escape}}";
+</script>
+{% block head %}
+{% endblock %}
+{% if not options.get('head') == None %}
+{{ options['head']|safe }}
+{% endif %}
+</head>
+<body class="entry">
+<header>
+<h1>{{options['title']|safe}}</h1>
+</header>
+<aside>
+{% if not options.get('about') == None %}
+{{ options['about']|safe }}
+{% endif %}
+{% if keywords|length > 0 %}
+<section id="side-keywords">
+ <h2>Keywords</h2>
+ {% for keyword in keywords %}{% if loop.index>1 %}, {% endif %}<a href="/rel/keyword/{{keyword|urlencode}}">{{keyword}}</a>{% endfor %}
+</section>
+{% endif %}
+{% if not options.get('sidebar') == None %}
+{{ options['sidebar']|safe }}
+{% endif %}
+{% if topics|length > 0 %}
+<section id="side-topics">
+ <h2>Topics</h2>
+ {% for keyword,count in topics %}<a href="/rel/keyword/{{keyword|urlencode}}">{{keyword}}</a> ({{count}}) {% endfor %}
+</section>
+{% endif %}
+</aside>
+
+{% block content %}
+<nav>
+<p class="entry-nav">
+{% if (preceding != None and following == None) %}⇐ {% endif %}
+{% if (preceding != None) %}<a href="{{preceding['uri']}}" title="preceding entry">{{preceding['title']}}</a> {% endif %}
+{% if (preceding != None and following !=None) %} ⇔ {% endif %}
+{% if (following != None) %}<a href="{{following['uri']}}" title="following entry">{{following['title']}}</a>{% endif %}
+{% if (preceding == None and following != None) %} ⇒{% endif %}
+</p>
+{% if not entry == None %}
+<p class="metadata"><a href="{{path}}" title="link to this entry">&#x1f517;</a> Published on {{entry['date']|escape}} at {{entry['time']|escape}}</p>
+{% if not options.get('entry.nav') == None %}
+{{ options['entry.nav']|safe }}
+{% endif %}
+{% endif %}
+{% if not options.get('nav') == None %}
+{{ options['nav']|safe }}
+{% endif %}
+
+</nav>
+
+{{ entryContent|safe }}
+
+<footer>
+<p class="entry-nav">
+{% if (preceding != None and following == None) %}⇐ {% endif %}
+{% if (preceding != None) %}<a href="{{preceding['uri']}}">{{preceding['title']}}</a> {% endif %}
+{% if (preceding != None and following !=None) %} ⇔ {% endif %}
+{% if (following != None) %}<a href="{{following['uri']}}">{{following['title']}}</a>{% endif %}
+{% if (preceding == None and following != None) %} ⇒{% endif %}
+</p>
+{% if not options.get('footer') == None %}
+{{ options['footer']|safe }}
+{% endif %}
+</footer>
+{% endblock %}
+</body>
+</html>

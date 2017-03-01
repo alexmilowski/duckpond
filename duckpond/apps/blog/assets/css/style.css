@@ -1,0 +1,210 @@
+body {
+   margin: 0px;
+   min-width: 620px;
+   font-size: 1.2em;
+   font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+   padding-left: 1em;
+   padding-right: 1em;
+   line-height: 1.25em;
+   background-color: rgb(255,255,255);
+}
+
+h1,h2,h3,h4,h5,h6 {
+   font-family: Helvetica, Arial, sans-serif;
+   color: rgb(50,50,50);
+}
+
+h1 {
+   color: rgb(50,50,50);
+}
+
+header {
+   margin-top: 0.25em;
+}
+
+header > h1, footer > h1 {
+   font-family: monospace;
+   font-size: 1.5em;
+}
+
+header > h1 {
+   width: 80%;
+}
+
+body > .entry-nav {
+   font-size: 0.8125em;
+   margin-bottom: 0em;
+}
+
+h1  img {
+   vertical-align: middle;
+}
+
+h2 {
+   font-size: 1.2em;
+   padding-bottom: 0.125em;
+}
+
+a:link, a:visited {
+   color: #cc6600;
+   text-decoration: none;
+}
+
+a:hover {
+   color: rgb(252,185,0);
+}
+
+footer {
+   clear: both;
+   padding-top: 1em;
+   text-align: center;
+}
+
+aside {
+   clear: both;
+   float: right;
+   width: 16em;
+   min-width: 16em;
+   margin-right: 0px;
+   margin-top: -2.5em;
+   margin-left: 1em;
+   padding-top: 0.5em;
+   background-color: rgb(255,255,255);
+}
+
+aside > section {
+   margin-left: 0.5em;
+   margin-bottom: 2em;
+   font-size: 0.8em;
+}
+
+aside > section > h2 {
+   width: 90%;
+   margin-top: 0.375em;
+   border-bottom: 1pt solid rgb(200,200,200);
+}
+
+aside .blurb {
+   padding-top: 1em;
+   margin-top: 0.5em;
+   margin-bottom: 1em;
+   padding-right: 0.5em;
+}
+
+aside .blurb img {
+  float: right;
+}
+
+aside .blurb p {
+   margin-top: 0em;
+}
+
+aside .blurb ul {
+   text-align: center;
+   display: block;
+   margin-left: -1em;
+   padding-left: 0em;
+}
+aside .blurb li {
+   display: inline-block;
+   padding-left: 0em;
+   padding-right: 0.25em;
+}
+
+
+
+.dismiss {
+   float: right;
+   margin-top: 0.25em;
+   margin-right: 0.25em;
+}
+
+
+article {
+   min-width: 400px;
+   /*min-height: 40em; */
+   /*margin-right: 16em;*/
+   margin-top: 1em;
+   padding-right: 0.5em;
+}
+
+article > section {
+   margin-bottom: 3em;
+}
+
+article > section > h2 {
+   border-bottom: 1px solid rgb(200,200,200);
+}
+
+nav > p.metadata {
+   margin-top: 0em;
+   font-size: 0.8125em;
+   color: #cc6600;
+}
+
+.journal .entries > section {
+   margin-bottom: 3em;
+}
+
+
+.tooltip {
+   background-color: rgb(200,200,200);
+   opacity: 0.75;
+   padding: 3px;
+}
+
+
+pre {
+   overflow: scroll;
+}
+
+figure {
+   display: block;
+   margin-top: 1.5em;
+   margin-bottom: 1.5em;
+}
+figure img {
+   display: block;
+   margin-left: auto;
+   margin-right: auto;
+}
+
+figure figcaption {
+   text-align: center;
+   font-size: 1.1em;
+   font-weight: bold;
+   margin-bottom: 1em;
+}
+
+blockquote {
+   font-style: italic;
+}
+
+#side-about h2 span {
+   float: right;
+   font-size: 0.8125em;
+}
+
+#side-about h2 span img {
+   height: 1em;
+   display: inline-block;
+}
+
+div.embed {
+   width: 70%;
+   min-height: 60%;
+}
+div.embed > iframe {
+   width: 100%;
+   height: 100%
+}
+
+.social {
+   margin-top: 0.5em;
+}
+.social > * {
+   margin-right: 3px;
+}
+.twitter-button, .pinterest-button {
+   display: inline-block
+}

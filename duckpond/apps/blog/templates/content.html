@@ -1,0 +1,10 @@
+<!-- extend from base layout -->
+{% extends "base.html" %}
+
+{% block head %}
+<link rel="stylesheet" type="text/css" href="/docs/content.css"/>
+{% endblock %}
+
+{% block content %}
+{{ html|safe }}
+{% endblock %}
