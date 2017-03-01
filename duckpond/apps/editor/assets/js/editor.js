@@ -683,7 +683,7 @@ class DuckpondEditor {
       let contentPartList = footer.find(".editor-content-parts");
       let addPart = (name,contentType) => {
          let item = $(SafeHTML`
-            <li>${name}; ${contentType}
+            <li data-name="${name}">${name}; ${contentType}
                <a href="#" uk-icon="icon: file-edit" title="Edit Part" class="uk-icon-link editor-content-part-edit"></a>
                <a href="#" uk-icon="icon: download" title="Edit Part" class="uk-icon-link editor-content-part-download"></a>
                <a href="#" uk-icon="icon: trash" title="Delete Part" class="uk-icon-link editor-content-part-delete"></a>
@@ -781,7 +781,7 @@ class DuckpondEditor {
 
             let name = arguments[0].responseJSON["name"];
             let existing = false;
-            contentMediaList.find("li").each((i,item) => {
+            contentPartList.find("li").each((i,item) => {
                if (item.dataset.name==name) {
                   existing = true;
                }
