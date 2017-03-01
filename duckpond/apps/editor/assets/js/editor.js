@@ -33,6 +33,21 @@ function localDateTime() {
         + ':' + pad(tzo % 60);
 }
 
+function parseDateTime(dateTime) {
+   let tpos = dateTime.indexOf('T');
+   let date = dateTime.substring(0,tpos);
+   let time = dateTime.substring(tpos+1);
+   let period = time.indexOf('.',time.indexOf(':',time.indexOf(':')+1))
+   if (period>0) {
+      let dash = time.indexOf('-',period);
+      if (dash>0) {
+         time = time.substring(0,period)+time.substring(dash);
+      }
+   }
+   return [date,time];
+
+}
+
 class DuckpondEditor {
    constructor(client) {
       this.client = client;
@@ -114,24 +129,68 @@ class DuckpondEditor {
    reloadContents() {
       this.client.getContents().then((contents) => {
          console.log("Refreshing content display...")
-         $("#editor-content-list .content-row").remove();
+
+         $("#editor-content-genre-list li").remove();
+
+         this.genres = {};
+         let sortedGenres = [];
          for (let content of contents) {
-            $("#editor-content-list").append(
-               `<tr class="content-row"
-                    data-url="${content.url}"
-                    data-genre="${content.genre}"
-                    data-name="${content.name}"
-                    data-type="${content['@type']}"
-                    data-headline="${content.headline}">
-                <td><a href="#" class="uk-icon-link editor-edit-content" uk-icon="icon: file-edit" title="edit"></a></td>
-                <td>${content.genre}</td>
-                <td>${content.name}</td>
-                <td>${content['@type']}</td>
-                <td>${content.headline}</td>
-                <td><a href="#" class="uk-icon-link editor-delete-content" uk-icon="icon: trash" title="delete"></a></td>
-                </tr>`
-            )
+            let genre = this.genres[content.genre];
+            if (genre==undefined) {
+               genre = {
+                  items: []
+               };
+               this.genres[content.genre] = genre;
+               sortedGenres.push(content.genre);
+            }
+            genre.items.push(content);
          }
+         sortedGenres.sort()
+
+         for (let [index,genre] of sortedGenres.entries()) {
+            let def = this.genres[genre];
+            def.container = $(
+               `<li class="${index==0 ? 'uk-open' : ''}">
+                  <h3 class="uk-accordion-title">${genre}</h3>
+                  <div class="uk-accordion-content uk-overflow-auto" data-genre="${genre}">
+                     <table class="uk-table uk-table-striped uk-table-condensed uk-text-nowrap">
+                        <tr><th></th><th>Name</th><th>Date</th><th>Time</th><th>Type</th><th>Headline</th><td></td></tr>
+                     </table>
+                  </div>
+                </li>`
+            );
+            $("#editor-content-genre-list").append(def.container);
+            def.items.sort(function(a,b) {
+               let v = a['dateModified'].localeCompare(b['dateModified']);
+               return v<0 ? 1 : v>0 ? -1 : 0;
+            })
+            for (let content of def.items) {
+               let [date,time] = parseDateTime(content.dateModified);
+               $(def.container).find("table").append(
+                  `<tr class="content-row"
+                       data-url="${content.url}"
+                       data-genre="${content.genre}"
+                       data-name="${content.name}"
+                       data-type="${content['@type']}"
+                       data-headline="${content.headline}"
+                       data-modified="${content.dateModified}">
+                   <td class="toolbar">
+                      <ul class="uk-iconnav">
+                      <li><a href="#" class="uk-icon-link editor-edit-content" uk-icon="icon: file-edit" title="edit"></a></li>
+                      <li><a href="#" class="uk-icon-link editor-delete-content" uk-icon="icon: trash" title="delete"></a></li>
+                      </ul>
+                   </td>
+                   <td class="name">${content.name}</td>
+                   <td class="date">${date}</td>
+                   <td class="time">${time}</td>
+                   <td class="type">${content['@type']}</td>
+                   <td class="headline">${content.headline}</td>
+                   <td></td>
+                   </tr>`
+               )
+            }
+         }
+
          $(".editor-edit-content").click(
             (e) => {
                this.editContent($(e.currentTarget).closest("tr").get(0).dataset);
@@ -143,33 +202,83 @@ class DuckpondEditor {
                this.deleteContent(row,row.dataset);
             }
          );
+
          console.log("Finished.")
       }).catch((status) => {
          this.error(`Cannot load content, status ${status}`);
       })
    }
 
+   createGenreDefinition(genre) {
+      let def = this.genres[genre];
+      if (def==undefined) {
+         def = { items: [] };
+         this.genres[genre] = def;
+         def.container = $(
+            `<li>
+               <h3 class="uk-accordion-title">${genre}</h3>
+               <div class="uk-accordion-content uk-overflow-auto" data-genre="${genre}">
+                  <table class="uk-table uk-table-striped uk-table-condensed uk-text-nowrap">
+                     <tr><th></th><th>Name</th><th>Date</th><th>Time</th><th>Type</th><th>Headline</th><td></td></tr>
+                  </table>
+               </div>
+             </li>`
+         );
+         let appended = false;
+         $("#editor-content-genre-list li div").each((i,div) => {
+            if (!appended && div.dataset.genre > genre) {
+               def.container.insertBefore($(div.parentNode))
+               appended = true;
+            }
+         });
+         if (!appended) {
+            $("#editor-content-genre-list").append(def.container);
+         }
+      }
+      return def;
+
+   }
+
    createContent(typeName,genre,name,title) {
       this.client.createContent(typeName,genre,name,title)
-         .then((location) => {
-            console.log(location)
+         .then((response) => {
+            console.log(response.location+" "+response.modified);
+            let def = this.createGenreDefinition(genre);
+            let [date,time] = parseDateTime(response.modified);
             // Create the row
             let row = $(
-               SafeHTML`<tr class="content-row"
-                    data-url="${location}"
+               `<tr class="content-row"
+                    data-url="${response.location}"
                     data-genre="${genre}"
                     data-name="${name}"
                     data-type="${typeName}"
-                    data-headline="${title}">
-                <td><a href="#" class="uk-icon-link editor-edit-content" uk-icon="icon: file-edit" title="edit"></a></td>
-                <td>${genre}</td>
-                <td>${name}</td>
-                <td>${typeName}</td>
-                <td>${title}</td>
-                <td><a href="#" class="uk-icon-link editor-delete-content" uk-icon="icon: trash" title="delete"></a></td>
+                    data-headline="${title}"
+                    data-modified="${response.modified}">
+                <td class="toolbar">
+                   <ul class="uk-iconnav">
+                   <li><a href="#" class="uk-icon-link editor-edit-content" uk-icon="icon: file-edit" title="edit"></a></li>
+                   <li><a href="#" class="uk-icon-link editor-delete-content" uk-icon="icon: trash" title="delete"></a></li>
+                   </ul>
+                </td>
+                <td class="name">${name}</td>
+                <td class="date">${date}</td>
+                <td class="time">${time}</td>
+                <td class="type">${typeName}</td>
+                <td class="headline">${title}</td>
+                <td></td>
                 </tr>`
-            );
-            $("#editor-content-list").append(row)
+            )
+
+            let rowAppended = false;
+            def.container.find("table tr").each((i,currentRow) => {
+               if (!rowAppended && currentRow.dataset.modified < response.modified) {
+                  row.insertBefore($(currentRow));
+                  rowAppended = true;
+               }
+            });
+            if (!rowAppended) {
+               def.container.find("table").append(row);
+            }
 
             // Attach the actions for the row
             row.find(".editor-edit-content").click(
@@ -197,6 +306,71 @@ class DuckpondEditor {
 
    }
 
+   updateContentItem(oldGenre,oldName,newGenre,newName,headline,modified) {
+      console.log(oldGenre+"/"+oldName+" -> "+newGenre+"/"+newName);
+      let row = undefined;
+      let divContainer = undefined;
+      $("#editor-content-genre-list li div").each((i,div) => {
+         if (div.dataset.genre==oldGenre) {
+            divContainer = div
+         }
+      });
+      $(divContainer).find("table tr").each((i,tr) => {
+         if (tr.dataset.name==oldName) {
+            row = tr;
+         }
+      })
+      if (oldGenre!=newGenre) {
+         $(row).remove();
+         let count = 0;
+         $(divContainer).find("table tr").each((i,row) => {
+            count++;
+         });
+         if (count<=1) {
+            $(divContainer.parentNode).remove();
+         }
+         let def = this.createGenreDefinition(newGenre);
+         let rowAppended = false;
+         def.container.find("table tr").each((i,currentRow) => {
+            if (!rowAppended && currentRow.dataset.modified < modified) {
+               $(row).insertBefore($(currentRow));
+               rowAppended = true;
+            }
+         });
+         if (!rowAppended) {
+            def.container.find("table").append(row);
+         }
+         // Attach the actions for the row
+         $(row).find(".editor-edit-content").click(
+            (e) => {
+               this.editContent($(e.currentTarget).closest("tr").get(0).dataset);
+            }
+         );
+         $(row).find(".editor-delete-content").click(
+            (e) => {
+               let r = $(e.currentTarget).closest("tr").get(0);
+               this.deleteContent(r,r.dataset);
+            }
+         );
+
+      }
+      $(row).attr("data-genre",newGenre);
+      $(row).attr("data-name",newName);
+      $(row).attr("data-headline",headline);
+      $(row).attr("data-modified",modified);
+      let [date,time] = parseDateTime(modified);
+      $(row).find(".name").text(newName);
+      $(row).find(".date").text(date);
+      $(row).find(".time").text(time);
+      $(row).find(".headline").text(headline);
+      $("#editor-content-tabs li").each((i,tab) => {
+         if (tab.dataset['url']==row.dataset['url']) {
+            $(tab).find(".label").text(newGenre+" / "+newName);
+         }
+      });
+   }
+
+
    contentIdFromURL(url) {
       let idMatch = url.match(/\/([^\/]+)\/$/);
       if (!idMatch) {
@@ -218,7 +392,7 @@ class DuckpondEditor {
             UIkit.switcher("#editor-content-tabs")[0].show(i);
             found = true;
          }
-      })
+      });
       if (found) return;
 
       let tabContent = $(
@@ -234,7 +408,7 @@ class DuckpondEditor {
          </li>`
       );
       let tab = $(
-         SafeHTML`<li data-url="${dataset.url}" class="editor-content-tab uk-visible-toggle"><a href="#" title="${dataset.headline}"><span class="uk-icon-link uk-invisible-hover editor-closer" uk-icon="icon: close; ratio: 0.75"></span>${dataset.genre} / ${dataset.name}</a></li>`
+         SafeHTML`<li data-url="${dataset.url}" class="editor-content-tab uk-visible-toggle"><a href="#" title="${dataset.headline}"><span class="uk-icon-link uk-invisible-hover editor-closer" uk-icon="icon: close; ratio: 0.75"></span><span class="label">${dataset.genre} / ${dataset.name}</span></a></li>`
       );
       let tabIndex = $("#editor-content-tabs li").length;
       $("#editor-content-tabs").append(tab);
@@ -399,6 +573,8 @@ class DuckpondEditor {
          if (!valid) {
             return;
          }
+         let currentGenre = info.ld["genre"];
+         let currentName = info.ld["name"];
          info.ld["genre"] = genre;
          info.ld["name"] = name;
          info.ld["headline"] = headline;
@@ -425,10 +601,16 @@ class DuckpondEditor {
          this.client.updateContent(info.id,info.ld)
             .then((updatedData) => {
                UIkit.notification("<span uk-icon='icon: check'></span> Properties saved.");
+               info.ld["dateModified"] = updatedData["dateModified"];
                this.updateModified(header,updatedData["dateModified"]);
+               this.updateContentItem(currentGenre,currentName,genre,name,headline,info.ld["dateModified"])
             })
             .catch((status) => {
-               this.error(`Cannot update properties ${info.id}, status ${status}`);
+               if (status==409) {
+                  this.notify('Conflicting Genre / Name',`The genre "${genre}" and name "${name}" are in use.`);
+               } else {
+                  this.error(`Cannot update properties ${info.id}, status ${status}`);
+               }
             });
       });
 
@@ -882,15 +1064,27 @@ class DuckpondEditor {
                   return;
                }
                console.log(`Deleting ${id}`);
+               let table = row.parentNode;
+               var cleanup = function() {
+                  let count = 0;
+                  $(table).find("tr").each((i,row) => {
+                     count++;
+                  });
+                  if (count<=1) {
+                     $(table.parentNode.parentNode.parentNode).remove();
+                  }
+               };
                this.client.deleteContent(id)
                   .then(() => {
                      console.log("Success!");
                      $(row).remove();
+                     cleanup();
                      UIkit.notification(`<span uk-icon='icon: check'></span> Deleted ${dataset["genre"]}/${dataset["name"]}`);
                   })
                   .catch((status) => {
                      if (status==404) {
                         $(row).remove();
+                        cleanup();
                      } else {
                         this.error(`Cannot delete content ${idMatch[1]}, status ${status}`);
                      }
@@ -1011,8 +1205,11 @@ class DuckpondClient {
           }).then(
              (response) => {
                 if (response.ok) {
-                   console.log(response)
-                   resolve(response.headers.get('location'));
+                   let value = {
+                     'location' : response.headers.get('location'),
+                     'modified' : response.headers.get('date-modified')
+                   };
+                   resolve(value);
                 } else {
                    reject(response.status);
                 }

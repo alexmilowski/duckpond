@@ -84,3 +84,32 @@ main.editor-html-editor {
 .editor-part-editor-source {
    height: 100%;
 }
+
+.editor-content-menu {
+   float: left;
+   padding-left: 0.25em;
+   padding-top: 0.25em;
+   width: 1.5em;
+}
+
+#editor-content-genre-list {
+   margin-left: 2em;
+}
+
+#editor-content-genre-list .uk-accordion-title {
+   border-bottom: 1px solid #e5e5e5;
+}
+#editor-content-genre-list .content-row .toolbar {
+   min-width: 60px;
+   padding-left: 0px;
+   padding-right: 0px;
+}
+#editor-content-genre-list .content-row .date {
+   min-width: 6em;
+}
+#editor-content-genre-list .content-row .time {
+   min-width: 8em;
+}
+#editor-content-genre-list .content-row .headline {
+   min-width: 10em;
+}

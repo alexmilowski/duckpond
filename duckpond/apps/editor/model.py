@@ -29,9 +29,9 @@ def createContent(typeName,genre,name,headline):
    }
    response = requests.post(url,auth=getAuth(),data=json.dumps(data),headers=headers)
    if response.status_code!=201:
-      return (response.status_code,None)
+      return (response.status_code,None,None)
    else:
-      return (response.status_code,response.headers['Location'])
+      return (response.status_code,response.headers['Location'],response.headers['Date-Modified'])
 
 def deleteContent(id):
    url = app.config['SERVICE'] + 'content/' + id + '/'

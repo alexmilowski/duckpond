@@ -26,8 +26,8 @@ def content():
          'headline' not in data or \
          '@type' not in data:
          abort(400)
-      status,url = model.createContent(data['@type'],data['genre'],data['name'],data['headline'])
-      return Response(status=status,headers=({'Location' : url} if status==201 else {}))
+      status,url,modified = model.createContent(data['@type'],data['genre'],data['name'],data['headline'])
+      return Response(status=status,headers=({'Location' : url, 'Date-Modified' : modified} if status==201 else {}))
 
 @app.route('/data/content/<id>/',methods=['GET','PUT','POST','DELETE'])
 def content_item(id):
