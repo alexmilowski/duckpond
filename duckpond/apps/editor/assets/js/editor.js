@@ -1050,7 +1050,9 @@ ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
                if (doc.documentElement.tagName=='ARTICLE') {
                   return;
                } else if (doc.documentElement.tagName=='HTML') {
-                  let markup = $(doc).find("body").html().trim();
+                  let main = $(doc).find("body > main");
+                  let body = $(doc).find("body");
+                  let markup = main.length>0 ? main.html().trim() : body.html().trim();
                   if (markup.indexOf("<article>")==0 || markup.indexOf("<article ")==0) {
                      $(source).text(markup);
                   } else {
