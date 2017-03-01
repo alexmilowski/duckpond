@@ -47,9 +47,12 @@
    </div>
 </li>
 <li>
-<table id="editor-content-list" class="uk-table">
-   <tr><th><a href="#" class="uk-icon-link editor-reload-content" uk-icon="icon: refresh" title="refresh"></a></th><th>Genre</th><th>Name</th><th>Type</th><th>Headline</th><td></td></tr>
-</table>
+   <ul class="uk-iconnav  uk-iconnav-vertical editor-content-menu">
+      <li><a href="#" class="uk-icon-link editor-reload-content" uk-icon="icon: refresh" title="refresh"></a></li>
+   </ul>
+
+   <ul uk-accordion id="editor-content-genre-list" class="uk-margin-right">
+   </ul>
 </li>
 </ul>
 <div id="editor-notify" uk-modal>
