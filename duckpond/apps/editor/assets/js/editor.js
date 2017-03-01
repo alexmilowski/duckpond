@@ -919,6 +919,7 @@ class DuckpondEditor {
             <ul class="uk-iconnav uk-iconnav-vertical editor-content-item-menu">
                <li><a href="#" uk-icon="icon: close" title="Close" class="editor-content-item-close"></a></li>
                <li><a href="#" uk-icon="icon: push" title="Save" class="editor-content-item-save"></a></li>
+               <li><a href="#" uk-icon="icon: play" title="Preview" class="editor-content-item-preview"></a></li>
             </ul>
             <div class="editor-content-item ">
                <div class="uk-card uk-card-default uk-card-body editor-part-editor">
@@ -949,6 +950,8 @@ class DuckpondEditor {
             50
          );
       });
+
+
       let initializing = true;
       let needsSave = false;
       let source = null;
@@ -957,6 +960,29 @@ class DuckpondEditor {
          needsSave = true;
          tab.find(".editor-name").text(name+" *")
       }
+      tabContent.find(".editor-content-item-preview").click(() => {
+         let content = $(tabContent.find(".editor-part-tabs li")[0]).hasClass("uk-active") ?
+            $(source).val() :
+            preview.innerHTML;
+         if (content.trim().substring(0,9)!="<!DOCTYPE") {
+            content = `<!DOCTYPE html>
+            <html>
+            <head>
+            <title>title</title>
+            ${this.config['wrap-header']}
+            </head>
+            <body>
+            ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][0] : ''}
+            ${content}
+            ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
+            </body>
+            </html>
+            `
+         }
+         let previewWindow = window.open("about:blank", "", name);
+         previewWindow.document.write(content);
+
+      });
       if (baseContentType=="text/html") {
          tabContent.find(".editor-part-editor").append(SafeHTML`
             <ul uk-tab class="editor-part-tabs">
@@ -1002,7 +1028,9 @@ class DuckpondEditor {
 ${this.config['wrap-header']}
 </head>
 <body>
+${this.config['wrap-body']!=undefined ? this.config['wrap-body'][0] : ''}
 ${$(source).val()}
+${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
 </body>
 </html>
 `
