@@ -629,28 +629,37 @@ class DuckpondEditor {
          <div class="uk-child-width-expand uk-margin" uk-grid>
            <div>
              <div class="uk-card uk-card-default uk-card-body">
-             <h3 class="uk-heading-line"><span>Parts</span></h3>
-             <ul class="uk-list editor-content-parts">
-             </ul>
-             <ul class="uk-iconnav editor-content-part-menu">
-             <li><a href="#" uk-icon="icon: plus" title="Add Part" class="editor-content-part-add"></a></li>
-             </ul>
+                <h3 class="uk-heading-line"><span>Parts</span></h3>
+                <ul class="uk-list editor-content-parts">
+                </ul>
+                <ul class="uk-iconnav editor-content-part-menu">
+                <li><a href="#" uk-icon="icon: plus" title="Add Part" class="editor-content-part-add"></a></li>
+                </ul>
+                <div class="editor-content-part-add uk-placeholder uk-text-center">
+                  <span uk-icon="icon: cloud-upload"></span>
+                  <span class="uk-text-middle">Add or update content by dropping them here or</span>
+                  <div uk-form-custom>
+                    <input type="file">
+                    <span class="uk-link">selecting one</span>
+                  </div>
+                </div>
+                <progress class="editor-content-part-add-progress" class="uk-progress" value="0" max="100" hidden></progress>
              </div>
            </div>
            <div>
              <div class="uk-card uk-card-default uk-card-body">
-             <h3 class="uk-heading-line"><span>Media</span></h3>
-             <ul class="uk-list editor-content-media">
-             </ul>
-             <div class="editor-content-media-add uk-placeholder uk-text-center">
-               <span uk-icon="icon: cloud-upload"></span>
-               <span class="uk-text-middle">Add or update media by dropping them here or</span>
-               <div uk-form-custom>
-                 <input type="file">
-                 <span class="uk-link">selecting one</span>
-               </div>
-             </div>
-             <progress class="editor-content-media-add-progress" class="uk-progress" value="0" max="100" hidden></progress>
+                <h3 class="uk-heading-line"><span>Media</span></h3>
+                <ul class="uk-list editor-content-media">
+                </ul>
+                <div class="editor-content-media-add uk-placeholder uk-text-center">
+                  <span uk-icon="icon: cloud-upload"></span>
+                  <span class="uk-text-middle">Add or update media by dropping them here or</span>
+                  <div uk-form-custom>
+                    <input type="file">
+                    <span class="uk-link">selecting one</span>
+                  </div>
+                </div>
+                <progress class="editor-content-media-add-progress" class="uk-progress" value="0" max="100" hidden></progress>
            </div>
          </div>`);
       contentItem.append(footer);
@@ -723,6 +732,68 @@ class DuckpondEditor {
          },10);
       })
 
+      // Content Part Upload
+      let contentBar = footer.find(".editor-content-part-add-progress")[0];
+      UIkit.upload(`#content-item-${info.id} .editor-content-part-add`,{
+         url : this.client.service + "content/" + info.id + "/upload/hasPart",
+         multiple: false,
+         name: "file",
+         "data-type": "json",
+         beforeSend: function() { console.log('beforeSend', arguments); },
+         beforeAll: function() { console.log('beforeAll', arguments); },
+         load: function() { console.log('load', arguments); },
+         error: function() { console.log('error', arguments); },
+         complete: function() { console.log('complete', arguments); },
+         loadStart: function (e) {
+            console.log('loadStart', arguments);
+
+            contentBar.removeAttribute('hidden');
+            contentBar.max =  e.total;
+            contentBar.value =  e.loaded;
+         },
+         progress: function (e) {
+            console.log('progress', arguments);
+
+            contentBar.max =  e.total;
+            contentBar.value =  e.loaded;
+         },
+         loadEnd: function (e) {
+            console.log('loadEnd', arguments);
+
+            contentBar.max =  e.total;
+            contentBar.value =  e.loaded;
+         },
+         completeAll: function () {
+            console.log('completeAll', arguments);
+
+            console.log(arguments[0].responseJSON);
+
+            let name = arguments[0].responseJSON["name"];
+            let existing = false;
+            contentMediaList.find("li").each((i,item) => {
+               if (item.dataset.name==name) {
+                  existing = true;
+               }
+            });
+            if (!existing) {
+               addPart(name,arguments[0].responseJSON["fileFormat"]);
+               if (info.ld.hasPart==undefined) {
+                  info.ld.hasPart = [];
+               }
+               info.ld.hasPart.push(arguments[0].responseJSON);
+               console.log(info.ld);
+            }
+
+            setTimeout(function () {
+               contentBar.setAttribute('hidden', 'hidden');
+            }, 1000);
+
+            UIkit.notification("<span uk-icon='icon: check'></span> Media upload completed.");
+         }
+      });
+
+      // Media List
+
       let contentMediaList = footer.find(".editor-content-media");
       let addMedia = (name,contentType) => {
          let item = $(SafeHTML`
@@ -790,7 +861,7 @@ class DuckpondEditor {
                }
             });
             if (!existing) {
-               addMedia(name,arguments[0].responseJSON["content-type"]);
+               addMedia(name,arguments[0].responseJSON["fileFormat"]);
                if (info.ld.associatedMedia==undefined) {
                   info.ld.associatedMedia = [];
                }
@@ -875,15 +946,19 @@ class DuckpondEditor {
          tabContent.find(".editor-part-editor").append(SafeHTML`
             <ul uk-tab class="editor-part-tabs">
                <li class="uk-active">
-                  <a href="#">HTML</a>
+                  <a href="#">Source</a>
                </li>
                <li>
-                  <a href="#">Preview</a>
+                  <a href="#">Author</a>
                </li>
             </ul>
             <ul class="uk-switcher uk-margin editor-part-panes">
             <li>
-            <textarea class="uk-textarea editor-part-editor-source" rows="15" placeholder="Loading ..."></textarea>
+               <ul class="uk-iconnav uk-width-1-1 editor-part-editor-source-toolbar uk-margin-bottom">
+               <li><button class="uk-button uk-button-default uk-button-small" data-action="wrap" title="Wrap document (add DOCTYPE)" uk-tooltip><span uk-icon="icon: shrink"></span></button></li>
+               <li><button class="uk-button uk-button-default uk-button-small" data-action="unwrap" title="Unwrap document (remove DOCTYPE)" uk-tooltip><span uk-icon="icon: expand"></span></button></li>
+               </ul>
+               <textarea class="uk-textarea editor-part-editor-source" rows="15" placeholder="Loading ..."></textarea>
             </li>
             <li>
                <iframe class="uk-width-1-1 editor-part-editor-iframe" src="/assets/content/editor.html">
@@ -891,6 +966,39 @@ class DuckpondEditor {
             </li>
             </ul>`
          )
+
+         console.log(tabContent.find(".editor-part-editor-source-toolbar button"));
+         tabContent.find(".editor-part-editor-source-toolbar button").on("click",(e) => {
+            let action = e.currentTarget.dataset.action;
+            console.log(action);
+            if (action=="check") {
+               let parser = new DOMParser();
+               let doc = parser.parseFromString($(source).val(), "text/html");
+               console.log(doc);
+            } else if (action=="wrap") {
+               if ($(source).val().indexOf("<!DOCTYPE")>=0) {
+                  return;
+               }
+               $(source).val(
+`<!DOCTYPE html>
+<html>
+<head><title>title</title></head>
+<body>
+${$(source).val()}
+</body>
+</html>
+`
+               );
+            } else if (action=="unwrap") {
+               let parser = new DOMParser();
+               let doc = parser.parseFromString($(source).val(), "text/html");
+               console.log(doc.documentElement.tagName);
+               if (doc.documentElement.tagName!='HTML') {
+                  return;
+               }
+               $(source).val($(doc).find("body").html());
+            }
+         });
          // TODO: this timeout is a hack!  ready(iframe.contentDocument) didn't work
          let setupEditor = () => {
             let iframe = tabContent.find(".editor-part-editor-iframe")[0];
@@ -903,18 +1011,19 @@ class DuckpondEditor {
             }
             $(body).append(SafeHTML`
                <ul class="uk-iconnav uk-width-1-1 editor-part-editor-toolbar">
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="bold"><span uk-icon="icon: bold"></span></button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="italic"><span uk-icon="icon: italic"></span></button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="createlink" data-prompt="URL?"><span uk-icon="icon: link" data-action="link"></span></button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="insertunorderedlist"><span uk-icon="icon: list"></span></button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="insertorderedlist"><span uk-icon="icon: hashtag"></span><span uk-icon="icon: list"></span></button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<p>">p</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h1>">h1</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h2>">h2</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h3>">h3</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h4>">h4</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h5>">h5</button></li>
-                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<section>">section</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="bold" title="bold content" uk-tooltip><span uk-icon="icon: bold"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="italic" title="italic content" uk-tooltip><span uk-icon="icon: italic"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="createlink" data-prompt="URL?" title="create link" uk-tooltip><span uk-icon="icon: link" data-action="link"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="insertunorderedlist" title="insert bulleted list" uk-tooltip><span uk-icon="icon: list"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="insertorderedlist" title="insert numbered list" uk-tooltip><span uk-icon="icon: hashtag"></span><span uk-icon="icon: list"></span></button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<p>" title="insert paragraph" uk-tooltip>p</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h1>" title="insert heading, level 1" uk-tooltip>h1</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h2>" title="insert heading, level 2" uk-tooltip>h2</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h3>" title="insert heading, level 3" uk-tooltip>h3</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h4>" title="insert heading, level 4" uk-tooltip>h4</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<h5>" title="insert heading, level 5" uk-tooltip>h5</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<section>" title="insert section" uk-tooltip>section</button></li>
+                   <li><button class="uk-button uk-button-default uk-button-small" data-action="formatBlock;<div>" title="insert div" uk-tooltip>div</button></li>
                </ul>
                <div class="editor-part-editor-preview uk-width-1-1" contenteditable="true"></div>
             `);

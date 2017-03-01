@@ -1,3 +1,96 @@
-p, section, div, h1, h2, h3, h4, h5 {
+.editor-part-editor-preview {
+   padding-left: 0.5em;
+   padding-right: 0.5em;
+   padding-top: 0.5em;
+   padding-bottom: 0.5em;
+}
+
+.editor-part-editor-preview p,
+.editor-part-editor-preview section,
+.editor-part-editor-preview article,
+.editor-part-editor-preview div,
+.editor-part-editor-preview h1,
+.editor-part-editor-preview h2,
+.editor-part-editor-preview h3,
+.editor-part-editor-preview h4,
+.editor-part-editor-preview h5 {
    border: 1px dashed #e6e6e6;
+   margin-bottom: 0.5em;
+}
+
+.editor-part-editor-preview > div,
+.editor-part-editor-preview > section,
+.editor-part-editor-preview > article {
+   border: none;
+}
+
+.editor-part-editor-preview article, .editor-part-editor-preview section, .editor-part-editor-preview div {
+   padding-left: 0.25em;
+}
+
+.editor-part-editor-preview article::before {
+   content: "article";
+   font-size: 0.5em;
+   vertical-align: 110%;
+   margin-left: -2em;
+}
+
+.editor-part-editor-preview p::before {
+   content: "<p>";
+   font-size: 0.5em;
+   vertical-align: 110%;
+   margin-left: -1em;
+}
+
+.editor-part-editor-preview section::before {
+   content: "§";
+   font-size: 0.5em;
+   vertical-align: 110%;
+   margin-left: -0.25em;
+}
+
+.editor-part-editor-preview div::before {
+   content: "<div>";
+   font-size: 0.5em;
+   vertical-align: 110%;
+   margin-left: -2em;
+}
+
+.editor-part-editor-preview h1::before {
+   content: "1";
+   font-size: 0.5em;
+   vertical-align: 110%;
+   margin-left: -0.25em;
+}
+
+.editor-part-editor-preview h2::before {
+   content: "2";
+   font-size: 0.5em;
+   vertical-align: 110%;
+   margin-left: -0.25em;
+}
+
+.editor-part-editor-preview h3::before {
+   content: "3";
+   font-size: 0.5em;
+   vertical-align: 110%;
+   margin-left: -0.25em;
+}
+
+.editor-part-editor-preview h4::before {
+   content: "4";
+   font-size: 0.5em;
+   vertical-align: 110%;
+   margin-left: -0.25em;
+}
+
+.editor-part-editor-preview h5::before {
+   content: "5";
+   font-size: 0.5em;
+   vertical-align: 110%;
+   margin-left: -0.25em;
+}
+
+[contenteditable]:focus {
+    outline: 0px solid transparent;
 }
