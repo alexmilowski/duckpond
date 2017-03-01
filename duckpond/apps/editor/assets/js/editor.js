@@ -980,7 +980,7 @@ class DuckpondEditor {
             </html>
             `
          }
-         let previewWindow = window.open("about:blank", name);
+         let previewWindow = window.open("", name);
          previewWindow.document.write(content);
 
       });
@@ -1003,8 +1003,8 @@ class DuckpondEditor {
             </html>
             `
          }
-         let previewWindow = window.open("about:blank", name);
-         previewWindow.document.write(content);
+         let previewWindow = window.open("data:text/html;base64,"+btoa(content), name);
+         //previewWindow.document.write(content);
 
       });
       if (baseContentType=="text/html") {
