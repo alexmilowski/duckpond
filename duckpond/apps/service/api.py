@@ -419,12 +419,24 @@ def content():
          abort(401)
       q = SPARQL() \
             .start({ 'schema' : 'http://schema.org/'}) \
-            .select(['s','genre','type','name','headline','url']) \
-            .where('?s rdf:type ?type; schema:genre ?genre; schema:name ?name; schema:headline ?headline; schema:url ?url' )
+            .select(['s','genre','type','name','headline','url','modified','published']) \
+            .where('?s rdf:type ?type; schema:genre ?genre; schema:name ?name; schema:headline ?headline; schema:url ?url; schema:dateModified ?modified; . optional { ?s schema:datePublished ?published }'  )
       data = service.query(q)
       items = []
       for item in data['values']:
-         items.append({ '@context' : 'http://schema.org/', '@id' : uri(item[0]), '@type' : shorten(uri(item[2])), 'genre' : literal(item[1]),  'name' : literal(item[3]), 'headline' : literal(item[4]), 'url' : uri(item[5])})
+         ld = {
+            '@context' : 'http://schema.org/',
+            '@id' : uri(item[0]),
+            '@type' : shorten(uri(item[2])),
+            'genre' : literal(item[1]),
+            'name' : literal(item[3]),
+            'headline' : literal(item[4]),
+            'url' : uri(item[5]),
+            'dateModified' : literal(item[6])
+         }
+         if item[7] is not None:
+            ld['datePublished'] = literal(item[7])
+         items.append(ld)
       return jsonld_response(json.dumps(items))
 
    # POST creates an entity
@@ -467,7 +479,7 @@ def content():
       turtle.start()
       turtle.about(subject,data)
       service.put(turtle.end(),graph=url)
-      return Response(status=201,headers={'Location' : location})
+      return Response(status=201,headers={'Location' : location, 'Date-Modified' : data['dateModified']})
 
 @app.route('/content/<id>/',methods=['GET','PUT','POST','DELETE'])
 def content_item(id):
