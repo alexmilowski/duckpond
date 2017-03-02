@@ -980,6 +980,7 @@ class DuckpondEditor {
             content = `<!DOCTYPE html>
             <html>
             <head>
+            <base href="/data/content/${info.id}/">
             <title>${name}</title>
             ${this.config['preview-wrap-header']!=undefined ? this.config['preview-wrap-header'] : this.config['wrap-header']}
             </head>
