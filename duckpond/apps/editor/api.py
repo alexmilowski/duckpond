@@ -1,5 +1,4 @@
-import json
-import os
+import json, os, io
 from flask import make_response, request, Response, stream_with_context, abort
 from .app import app
 from . import model
@@ -57,9 +56,52 @@ def content_item(id):
 @app.route('/data/content/<id>/<resource>',methods=['GET','PUT','DELETE'])
 def content_item_resource(id,resource):
    if request.method == 'GET':
+      wrap = request.args.get('wrap')
       status_code,data,contentType = model.getContentResource(id,resource);
       if status_code==200:
-         return Response(stream_with_context(data),content_type = contentType)
+         if contentType.startswith("text/html") and wrap is not None:
+            blob = io.BytesIO()
+            for chunk in data:
+               blob.write(chunk)
+            content = blob.getvalue().decode("utf-8").strip()
+            if not content.startswith('<!DOCTYPE'):
+               editorConfig = app.config.get('EDITOR_CONFIG')
+               header = ''
+               bodyStart = ''
+               bodyEnd = ''
+               if editorConfig is not None and wrap=='preview':
+                  wheader = editorConfig.get('wrap-header')
+                  pheader = editorConfig.get('preview-wrap-header')
+                  if pheader is not None:
+                     header = pheader
+                  elif wheader is not None:
+                     header = wheader
+                  wbody = editorConfig.get('wrap-body')
+                  pbody = editorConfig.get('preview-body-main')
+                  if pbody is not None:
+                     bodyStart = pbody[0]
+                     bodyEnd = pbody[1]
+                  elif wbody is not None:
+                     bodyStart = wbody[0]
+                     bodyEnd = wbody[1]
+               elif editorConfig is not None and wrap=='formatted':
+                  wheader = editorConfig.get('wrap-header')
+                  if wheader is not None:
+                     header = wheader
+                  wbody = editorConfig.get('wrap-body')
+                  if wbody is not None:
+                     bodyStart = wbody[0]
+                     bodyEnd = wbody[1]
+               content = """
+<!DOCTYPE html>
+<html>
+<head><title>""" + resource + '</title>' + header + """
+</head>
+<body>
+""" + bodyStart + content + bodyEnd + '</body></html>'
+            return Response(stream_with_context(content),content_type = contentType)
+         else:
+            return Response(stream_with_context(data),content_type = contentType)
       else:
          abort(status_code)
    if request.method == 'PUT':
