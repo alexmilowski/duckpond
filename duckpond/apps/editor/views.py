@@ -24,7 +24,7 @@ def config():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
    if 'username' in session:
-      redirect(url_for('index'))
+      return redirect('/')
    form = LoginForm()
    if form.validate_on_submit():
       username = form.username.data
@@ -34,10 +34,20 @@ def login():
       if g.user is not None:
          flash('Login for {} successful.'.format(username))
          session['username'] = username
-         return redirect('/')
+         print("rediect="+form.redirectonlogin.data)
+         if form.redirectonlogin.data=='true':
+            return redirect('/')
+         else:
+            return render_template('login-successful.html',
+                                   title='Duckpond Content Editor',
+                                   username=session['username'])
       else:
          flash('Login for {} failed.'.format(username))
-   return render_template('login.html',
+   compact = request.args.get('compact')
+   requestRedirect = request.args.get('redirect')
+   form.redirectonlogin.data = requestRedirect if requestRedirect is not None else 'true'
+
+   return render_template('login.html' if compact is None or compact=='false' else 'login-compact.html',
                            title='Sign In',
                            form=form)
 

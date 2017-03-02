@@ -1,7 +1,32 @@
-{% extends "base.html" %}
-
-{% block content %}
+<html>
+<head>
+   <title>Login</title>
+   <link rel="stylesheet" href="/assets/css/uikit.min.css" />
+   <script src="/assets/js/jquery-3.1.1.min.js"></script>
+   <script src="/assets/js/uikit.min.js"></script>
+   <style type="text/css">
+   .uk-form-horizontal {
+      width: 400px;
+      padding: 10px;
+   }
+   .uk-form-horizontal .uk-form-label {
+      width: 5em;
+      font-size: 1em;
+   }
+   .uk-form-horizontal .uk-form-controls {
+      margin-left: 6em;
+   }
+   .submit {
+      text-align: right;
+   }
+   </style>
+</head>
+<body>
+<main>
 <div class="uk-card uk-card-body">
+   <header>
+      <h1>Duckpond</h1>
+   </header>
    <h1 class="uk-card-title">Please sign in:</h1>
    <div  class="uk-form-horizontal">
    <form action="" method="post" name="login">
@@ -18,10 +43,13 @@
             <input class="uk-input" value="{{form.password.data or ""}}" name="password" type="password" size="40">
          </div>
       </div>
-      <div class="uk-margin">
+      <input type="hidden" name="redirectonlogin" value="true">
+      <div class="uk-margin submit">
          <input type="submit" value="Login" class="uk-button  uk-button-default">
       </div>
    </form>
    </div>
 </div>
-{% endblock %}
+</main>
+</body>
+</html>

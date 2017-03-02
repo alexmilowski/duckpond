@@ -1,0 +1,50 @@
+<html>
+<head>
+   <title>Login</title>
+   <link rel="stylesheet" href="/assets/css/uikit.min.css" />
+   <script src="/assets/js/jquery-3.1.1.min.js"></script>
+   <script src="/assets/js/uikit.min.js"></script>
+   <style type="text/css">
+   .uk-form-horizontal {
+      width: 400px;
+      padding: 10px;
+   }
+   .uk-form-horizontal .uk-form-label {
+      width: 5em;
+      font-size: 1em;
+   }
+   .uk-form-horizontal .uk-form-controls {
+      margin-left: 6em;
+   }
+   .submit {
+      text-align: right;
+   }
+   </style>
+</head>
+<body>
+<main>
+
+<div class="uk-form-horizontal">
+<form action="" method="post" name="login">
+   {{ form.hidden_tag() }}
+   <div class="uk-margin">
+      <label class="uk-form-label" for="username" >Username</label>
+      <div class="uk-form-controls">
+         <input class="uk-input" value="{{form.username.data or ""}}" name="username" size="40">
+      </div>
+   </div>
+   <div class="uk-margin">
+      <label class="uk-form-label" for="password" >Password</label>
+      <div class="uk-form-controls">
+         <input class="uk-input" value="{{form.password.data or ""}}" name="password" type="password" size="40">
+      </div>
+   </div>
+   <input type="hidden" name="redirectonlogin" value="{{form.redirectonlogin.data or 'true'}}">
+   <div class="uk-margin submit">
+      <input type="submit" value="Login" class="uk-button  uk-button-default">
+   </div>
+</form>
+</div>
+</main>
+</body>
+</html>

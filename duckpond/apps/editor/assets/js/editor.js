@@ -137,6 +137,25 @@ class DuckpondEditor {
       UIkit.modal("#editor-notify")[0].toggle()
    }
 
+   login(onSuccess) {
+      console.log("Showing login dialog...");
+      UIkit.modal("#editor-login-dialog")[0].toggle();
+      let iframe = $("<iframe src='/login?compact=true&redirect=false'></iframe>");
+      $("#editor-login-dialog-contents").append(iframe);
+      let loginPoll = () => {
+         if (iframe[0].contentWindow.username != undefined) {
+            $("#editor-login-dialog-contents").empty();
+            UIkit.modal("#editor-login-dialog")[0].toggle();
+            if (onSuccess!=undefined) {
+               setTimeout(onSuccess,10);
+            }
+         } else {
+            setTimeout(loginPoll,500);
+         }
+      };
+      loginPoll();
+   }
+
    reloadContents() {
       this.client.getContents().then((contents) => {
          console.log("Refreshing content display...")
@@ -216,7 +235,12 @@ class DuckpondEditor {
 
          console.log("Finished.")
       }).catch((status) => {
-         this.error(`Cannot load content, status ${status}`);
+         if (status==401) {
+            console.log("Login expired...");
+            this.login();
+         } else {
+            this.error(`Cannot load content, status ${status}`);
+         }
       })
    }
 
@@ -308,7 +332,10 @@ class DuckpondEditor {
             UIkit.switcher("#editor-content-tabs")[0].show(1);
          })
          .catch((status) => {
-            if (status==409) {
+            if (status==401) {
+               console.log("Login expired...");
+               this.login();
+            } else if (status==409) {
                this.notify("Conflicting Content",`A content item with genre "${genre}" and name "${name}" already exists`);
             } else {
                this.error(`Cannot create content, status ${status}`);
@@ -443,7 +470,12 @@ class DuckpondEditor {
                this.addContentEdit(id,data,tabContent)
             })
             .catch((status) => {
-               this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+               if (status==401) {
+                  console.log("Login expired...");
+                  this.login();
+               } else {
+                  this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+               }
             })
       });
       setTimeout(
@@ -459,7 +491,12 @@ class DuckpondEditor {
             this.addContentEdit(id,data,tabContent)
          })
          .catch((status) => {
-            this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+            if (status==401) {
+               console.log("Login expired...");
+               this.login();
+            } else {
+               this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+            }
          })
    }
 
@@ -617,7 +654,10 @@ class DuckpondEditor {
                this.updateContentItem(currentGenre,currentName,genre,name,headline,info.ld["dateModified"])
             })
             .catch((status) => {
-               if (status==409) {
+               if (status==401) {
+                  console.log("Login expired...");
+                  this.login();
+               } else if (status==409) {
                   this.notify('Conflicting Genre / Name',`The genre "${genre}" and name "${name}" are in use.`);
                } else {
                   this.error(`Cannot update properties ${info.id}, status ${status}`);
@@ -1198,7 +1238,12 @@ ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
                   tab.find(".editor-name").text(name)
                })
                .catch((status) => {
-                  this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+                  if (status==401) {
+                     console.log("Login expired...");
+                     this.login();
+                  } else {
+                     this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+                  }
                });
          } else {
             this.client.updateContentResource(info.id,name,contentType,content)
@@ -1210,7 +1255,12 @@ ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
                   }
                })
                .catch((status) => {
-                  this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+                  if (status==401) {
+                     console.log("Login expired...");
+                     this.login();
+                  } else {
+                     this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+                  }
                });
          }
       });
@@ -1229,17 +1279,25 @@ ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
          }
          contentType = baseContentType + "; charset=UTF-8";
       } else {
-         this.client.getContentResource(info.id,name)
-            .then((text) => {
-               initializing = false;
-               $(source).text(text);
-               if (preview!=undefined) {
-                  $(preview).append(text);
-               }
-            })
-            .catch((status) => {
-               this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
-            });
+         let tryLoadContent = () => {
+            this.client.getContentResource(info.id,name)
+               .then((text) => {
+                  initializing = false;
+                  $(source).text(text);
+                  if (preview!=undefined) {
+                     $(preview).append(text);
+                  }
+               })
+               .catch((status) => {
+                  if (status==401) {
+                     console.log("Login expired...");
+                     this.login(tryLoadContent);
+                  } else {
+                     this.error(`Cannot retrieve content ${idMatch[1]}, status ${status}`);
+                  }
+               });
+         };
+         tryLoadContent();
       }
 
    }
@@ -1273,7 +1331,10 @@ ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
                      UIkit.notification(`<span uk-icon='icon: check'></span> Deleted ${dataset["genre"]}/${dataset["name"]}`);
                   })
                   .catch((status) => {
-                     if (status==404) {
+                     if (status==401) {
+                        console.log("Login expired...");
+                        this.login();
+                     } else if (status==404) {
                         $(row).remove();
                         cleanup();
                      } else {
@@ -1305,7 +1366,10 @@ ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
                      console.log(info.ld);
                   })
                   .catch((status) => {
-                     if (status==404) {
+                     if (status==401) {
+                        console.log("Login expired...");
+                        this.login();
+                     } else if (status==404) {
                         $(item).remove();
                      } else {
                         this.error(`Cannot delete resource ${name}, status ${status}`);
@@ -1346,7 +1410,10 @@ ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
                      console.log(info.ld);
                   })
                   .catch((status) => {
-                     if (status==404) {
+                     if (status==401) {
+                        console.log("Login expired...");
+                        this.login();
+                     } else if (status==404) {
                         $(item).remove();
                      } else {
                         this.error(`Cannot delete resource ${name}, status ${status}`);
@@ -1551,5 +1618,5 @@ var editor = new DuckpondEditor(new DuckpondClient("/data/"));
 
 $(document).ready(function() {
    editor.bind();
-   editor.reloadContents()
+   editor.reloadContents();
 })

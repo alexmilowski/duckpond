@@ -15,5 +15,7 @@ def before_request():
 
    if request.path.startswith('/assets'):
       return
-   if request.path != '/login' and not authenticated:
+   if (request.path == '/' or request.path == '/logout') and not authenticated:
       return redirect('/login')
+   if request.path != '/login' and not authenticated:
+      abort(401)
