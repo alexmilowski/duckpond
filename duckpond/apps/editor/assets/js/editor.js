@@ -644,7 +644,7 @@ class DuckpondEditor {
                 <ul class="uk-list editor-content-parts">
                 </ul>
                 <ul class="uk-iconnav editor-content-part-menu">
-                <li><a href="#" uk-icon="icon: plus" title="Add Part" class="editor-content-part-add"></a></li>
+                <li><a href="#" uk-icon="icon: plus" title="Create Part" class="editor-content-part-create"></a></li>
                 </ul>
                 <div class="editor-content-part-add uk-placeholder uk-text-center">
                   <span uk-icon="icon: cloud-upload"></span>
@@ -674,7 +674,7 @@ class DuckpondEditor {
            </div>
          </div>`);
       contentItem.append(footer);
-      footer.find(".editor-content-part-add").click(() => {
+      footer.find(".editor-content-part-create").click(() => {
          console.log("Add part");
          console.log(info);
          UIkit.modal("#editor-add-part-dialog")[0].toggle()
