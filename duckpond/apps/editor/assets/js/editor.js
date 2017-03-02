@@ -685,7 +685,9 @@ class DuckpondEditor {
          let item = $(SafeHTML`
             <li data-name="${name}">${name}; ${contentType}
                <a href="#" uk-icon="icon: file-edit" title="Edit Part" class="uk-icon-link editor-content-part-edit"></a>
-               <a href="#" uk-icon="icon: download" title="Edit Part" class="uk-icon-link editor-content-part-download"></a>
+               <a href="#" uk-icon="icon: download" title="Download (raw) Part" class="uk-icon-link editor-content-part-download"></a>
+               <a href="#" uk-icon="icon: pull" title="Download (formatted) Part" class="uk-icon-link editor-content-part-download-formatted"></a>
+               <a href="#" uk-icon="icon: play" title="Preview Part" class="uk-icon-link editor-content-part-preview"></a>
                <a href="#" uk-icon="icon: trash" title="Delete Part" class="uk-icon-link editor-content-part-delete"></a>
             </li>
          `);
@@ -698,6 +700,16 @@ class DuckpondEditor {
          item.find(".editor-content-part-download").click(() => {
             console.log(`Download part ${name}`);
             open(`/data/content/${info.id}/${name}`,name);
+            return false;
+         });
+         item.find(".editor-content-part-download-formatted").click(() => {
+            console.log(`Download part ${name}`);
+            open(`/data/content/${info.id}/${name}?wrap=formatted`,name);
+            return false;
+         });
+         item.find(".editor-content-part-preview").click(() => {
+            console.log(`Download part ${name}`);
+            open(`/data/content/${info.id}/${name}?wrap=preview`,name);
             return false;
          });
          item.find(".editor-content-part-delete").click(() => {
@@ -920,7 +932,6 @@ class DuckpondEditor {
                <li><a href="#" uk-icon="icon: close" title="Close" class="editor-content-item-close"></a></li>
                <li><a href="#" uk-icon="icon: push" title="Save" class="editor-content-item-save"></a></li>
                <li><a href="#" uk-icon="icon: play" title="Preview" class="editor-content-item-preview"></a></li>
-               <li><a href="#" uk-icon="icon: download" title="Download" class="editor-content-item-download"></a></li>
             </ul>
             <div class="editor-content-item ">
                <div class="uk-card uk-card-default uk-card-body editor-part-editor">
@@ -969,7 +980,7 @@ class DuckpondEditor {
             content = `<!DOCTYPE html>
             <html>
             <head>
-            <title>title</title>
+            <title>${name}</title>
             ${this.config['preview-wrap-header']!=undefined ? this.config['preview-wrap-header'] : this.config['wrap-header']}
             </head>
             <body>
@@ -982,29 +993,6 @@ class DuckpondEditor {
          }
          let previewWindow = window.open("", name);
          previewWindow.document.write(content);
-
-      });
-      tabContent.find(".editor-content-item-download").click(() => {
-         let content = $(tabContent.find(".editor-part-tabs li")[0]).hasClass("uk-active") ?
-            $(source).val() :
-            preview.innerHTML;
-         if (content.trim().substring(0,9)!="<!DOCTYPE") {
-            content = `<!DOCTYPE html>
-            <html>
-            <head>
-            <title>title</title>
-            ${this.config['wrap-header']}
-            </head>
-            <body>
-            ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][0] : ''}
-            ${content}
-            ${this.config['wrap-body']!=undefined ? this.config['wrap-body'][1] : ''}
-            </body>
-            </html>
-            `
-         }
-         let previewWindow = window.open("data:text/html;base64,"+btoa(content), name);
-         //previewWindow.document.write(content);
 
       });
       if (baseContentType=="text/html") {
@@ -1048,7 +1036,7 @@ class DuckpondEditor {
 `<!DOCTYPE html>
 <html>
 <head>
-<title>title</title>
+<title></title>
 ${this.config['wrap-header']}
 </head>
 <body>
