@@ -36,7 +36,11 @@
    <div class="uk-margin">
       <label class="uk-form-label" for="password" >Password</label>
       <div class="uk-form-controls">
+         {% if failed %}
+         <input class="uk-input uk-form-danger" value="{{form.password.data or ""}}" name="password" type="password" size="40">
+         {% else %}
          <input class="uk-input" value="{{form.password.data or ""}}" name="password" type="password" size="40">
+         {% endif %}
       </div>
    </div>
    <input type="hidden" name="redirectonlogin" value="{{form.redirectonlogin.data or 'true'}}">

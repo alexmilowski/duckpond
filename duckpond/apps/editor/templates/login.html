@@ -28,6 +28,9 @@
       <h1>Duckpond</h1>
    </header>
    <h1 class="uk-card-title">Please sign in:</h1>
+   {% if failed %}
+   <p class="uk-text-danger">Login incorrect, please try again.</p>
+   {% endif %}
    <div  class="uk-form-horizontal">
    <form action="" method="post" name="login">
       {{ form.hidden_tag() }}

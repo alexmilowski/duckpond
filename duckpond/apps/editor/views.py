@@ -26,29 +26,37 @@ def login():
    if 'username' in session:
       return redirect('/')
    form = LoginForm()
+   failed = False
    if form.validate_on_submit():
       username = form.username.data
       password = form.password.data
       if app.config['AUTH_SERVICE'].authenticate(username,password):
          g.user = app.config['AUTH_SERVICE'].getUser(username)
-      if g.user is not None:
-         flash('Login for {} successful.'.format(username))
-         session['username'] = username
-         print("rediect="+form.redirectonlogin.data)
-         if form.redirectonlogin.data=='true':
-            return redirect('/')
+      try:
+         if g.user is not None:
+            flash('Login for {} successful.'.format(username))
+            session['username'] = username
+            print("rediect="+form.redirectonlogin.data)
+            if form.redirectonlogin.data=='true':
+               return redirect('/')
+            else:
+               return render_template('login-successful.html',
+                                      title='Duckpond Content Editor',
+                                      username=session['username'])
          else:
-            return render_template('login-successful.html',
-                                   title='Duckpond Content Editor',
-                                   username=session['username'])
-      else:
+            flash('Login for {} failed.'.format(username))
+            failed = True
+      except AttributeError:
          flash('Login for {} failed.'.format(username))
+         failed = True
+
    compact = request.args.get('compact')
    requestRedirect = request.args.get('redirect')
    form.redirectonlogin.data = requestRedirect if requestRedirect is not None else 'true'
 
    return render_template('login.html' if compact is None or compact=='false' else 'login-compact.html',
                            title='Sign In',
+                           failed=failed,
                            form=form)
 
 @app.route('/logout')
