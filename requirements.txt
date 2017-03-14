@@ -1,2 +1,9 @@
 commonmark
 requests
+Flask
+Flask-Session
+Flask-WTF
+WTForms
+pytz
+boto3
+botocore
