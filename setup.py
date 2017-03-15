@@ -29,7 +29,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.7.0',
+    version='0.8.0',
 
     description='A semantic pond for content delivery',
     long_description=long_description,
@@ -90,6 +90,8 @@ setup(
     # $ pip install -e .[dev,test]
     extras_require={
     },
+
+    include_package_data=True,
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
