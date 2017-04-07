@@ -5,8 +5,6 @@ from enum import Enum
 import urllib
 from .sparql import SPARQL
 
-logger = logging.getLogger('duckpond.pond')
-
 def strip(value):
    if value is None:
       return value
@@ -95,6 +93,9 @@ class Pond:
       local = 3
 
    def __init__(self,service,cache=None,facets=None,graphs=None):
+      self.logger = logging.getLogger(__name__)
+      self.logger.setLevel(logging.DEBUG)
+      self.logger.debug('Debug log for '+__name__)
       self.service = service
       self.cache = cache
       self.serviceAuth = self.authenticate('anonymous')
@@ -180,8 +181,8 @@ class Pond:
             .fromGraphs(self.graphs) \
             .where(expr) \
             .orderBy('desc(?ordering)')
-      if logger.isEnabledFor(logging.DEBUG):
-         logger.debug(str(q))
+      if self.logger.isEnabledFor(logging.DEBUG):
+         self.logger.debug(str(q))
       params = self.mergeParameters({'limit':1,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -219,8 +220,8 @@ class Pond:
             .fromGraphs(self.graphs) \
             .where(expr) \
             .orderBy('desc(?ordering)')
-      if logger.isEnabledFor(logging.DEBUG):
-         logger.debug(str(q))
+      if self.logger.isEnabledFor(logging.DEBUG):
+         self.logger.debug(str(q))
       params = self.mergeParameters({'limit':1,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -246,11 +247,19 @@ class Pond:
          base = self.cache['base']
          relative = resource[resource.index(base) + len(base):]
          uri = self.cache['proxy'] + relative
+      if not self.cache==None and 'dir' in self.cache:
+         relative = resource
+         if 'base' in self.cache:
+            base = self.cache['base']
+            relative = resource[resource.index(base) + len(base):]
+         uri = 'file://' + os.path.join(os.path.abspath(self.cache['dir']),relative)
       return uri
 
    def getResourceText(self,resource,authorization=None):
 
       uri = self.proxyURL(resource)
+
+      self.logger.debug(uri)
 
       if self.cache==None or uri[0:5]=='http:' or uri[0:6]=='https:':
          headers = {}
@@ -314,8 +323,8 @@ class Pond:
             .fromGraphs(self.graphs) \
             .where(expr ) \
             .orderBy('desc(?ordering)' if previous else 'asc(?ordering)')
-      if logger.isEnabledFor(logging.DEBUG):
-         logger.debug(str(q))
+      if self.logger.isEnabledFor(logging.DEBUG):
+         self.logger.debug(str(q))
       params = self.mergeParameters({'limit':limit,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -366,8 +375,8 @@ class Pond:
             .select(['s','title','summary','ordering','name','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr)
-      if logger.isEnabledFor(logging.DEBUG):
-         logger.debug(str(q))
+      if self.logger.isEnabledFor(logging.DEBUG):
+         self.logger.debug(str(q))
       params = self.mergeParameters({'limit':1,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -399,8 +408,8 @@ class Pond:
             .where(expr) \
             .groupBy('?category') \
             .orderBy('desc(?count)')
-      if logger.isEnabledFor(logging.DEBUG):
-         logger.debug(str(q))
+      if self.logger.isEnabledFor(logging.DEBUG):
+         self.logger.debug(str(q))
       params = self.mergeParameters({'limit':100,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -424,8 +433,8 @@ class Pond:
             .select(['category']) \
             .fromGraphs(self.graphs) \
             .where(expr)
-      if logger.isEnabledFor(logging.DEBUG):
-         logger.debug(str(q))
+      if self.logger.isEnabledFor(logging.DEBUG):
+         self.logger.debug(str(q))
       params = self.mergeParameters({'limit':100,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -453,8 +462,8 @@ class Pond:
             .select(['s','title','summary','date','name','genre']) \
             .fromGraphs(self.graphs) \
             .where(expr)
-      if logger.isEnabledFor(logging.DEBUG):
-         logger.debug(str(q))
+      if self.logger.isEnabledFor(logging.DEBUG):
+         self.logger.debug(str(q))
       params = self.mergeParameters({'limit':limit,'query':str(q)})
 
       req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
@@ -487,8 +496,8 @@ class Pond:
                .select(['url','format','type']) \
                .fromGraphs(self.graphs) \
                .where(expr)
-         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(str(q))
+         if self.logger.isEnabledFor(logging.DEBUG):
+            self.logger.debug(str(q))
          params = self.mergeParameters({'query':str(q)})
          req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
 
@@ -516,8 +525,8 @@ class Pond:
                .select(['url']) \
                .fromGraphs(self.graphs) \
                .where(expr)
-         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(str(q))
+         if self.logger.isEnabledFor(logging.DEBUG):
+            self.logger.debug(str(q))
          params = self.mergeParameters({'query':str(q)})
          req = requests.get(self.service,params=params,headers={'accept':'application/json'},auth=self.serviceAuth)
          if (req.status_code>=200 or req.status_code<300):
