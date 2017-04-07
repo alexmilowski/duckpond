@@ -5,7 +5,6 @@ body {
    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
    padding-left: 1em;
    padding-right: 1em;
-   line-height: 1.25em;
    background-color: rgb(255,255,255);
 }
 
@@ -31,9 +30,14 @@ header > h1 {
    width: 80%;
 }
 
-body > .entry-nav {
+article header nav .article-navigation, article footer nav .article-navigation {
    font-size: 0.8125em;
    margin-bottom: 0em;
+   text-align: right;
+}
+
+article footer nav {
+   margin-bottom: 1em;
 }
 
 h1  img {
@@ -60,9 +64,19 @@ footer {
    text-align: center;
 }
 
-aside {
-   clear: both;
-   float: right;
+main   {
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+}
+
+main > article {
+   float: none;
+   order: 1;
+}
+main > aside {
+   float: none;
+   order: 2;
    width: 16em;
    min-width: 16em;
    margin-right: 0px;
@@ -122,9 +136,6 @@ aside .blurb li {
 
 article {
    min-width: 400px;
-   /*min-height: 40em; */
-   /*margin-right: 16em;*/
-   margin-top: 1em;
    padding-right: 0.5em;
 }
 
@@ -151,6 +162,11 @@ nav > p.metadata {
    background-color: rgb(200,200,200);
    opacity: 0.75;
    padding: 3px;
+}
+
+.entry article blockquote {
+   border-left: 3px solid rgb(200,200,200);
+   padding-left: 1em;
 }
 
 
