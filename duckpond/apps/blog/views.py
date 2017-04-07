@@ -7,9 +7,11 @@ from duckpond.data.pond import Facet
 from .app import app
 
 logger = logging.getLogger('webapp')
+user = app.config.get('USER')
+password = app.config.get('PASSWORD')
 
 data = Pond(app.config['SPARQL_SERVICE'],cache=app.config['CACHE'],facets=[ Facet('resource','schema:isBasedOnUrl','xsd:anyURI')])
-data.authenticate("anonymous", "")
+data.authenticate(user if user is not None else 'anonymous', password if password is not None else '')
 
 journalGenre = app.config.get('JOURNAL_GENRE')
 if journalGenre is None:
@@ -60,7 +62,7 @@ def index():
    resource = data.getEntityResource(subject)
    following = data.relatedEntityByOrder(dateTime,previous=True)
    path = "/journal/entry/{}T{}/".format(date,time)
-   return renderEntry(resource[0],entry=entry(entryInfo),following=entry(following) if len(following)>0 else None,base=path,path=path)
+   return renderEntry(resource[0],entry=entry(entryInfo),following=entry(following) if following is not None and len(following)>0 else None,base=path,path=path)
 
 @app.route('/journal/entry/<date>T<time>/')
 def entryByTime(date,time):

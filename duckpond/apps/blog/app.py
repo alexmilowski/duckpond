@@ -1,5 +1,5 @@
 from flask import Flask
-import logging, os
+import logging, logging.config, os
 
 # TODO: total hack to get the configuration of the templates folder
 f = os.environ.get('WEB_CONF')
@@ -17,3 +17,7 @@ app.config.from_envvar('WEB_CONF')
 logLevel = app.config.get('LOGLEVEL')
 if logLevel is not None:
    logging.basicConfig(level=logLevel)
+
+logConfig = app.config.get("LOGCONFIG")
+if logConfig is not None:
+   logging.config.dictConfig(logConfig)
