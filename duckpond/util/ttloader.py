@@ -13,7 +13,6 @@ args = argparser.parse_args()
 inDir = args.dir[0]
 repository = args.uri[0]
 
-print(args.user)
 auth = requests.auth.HTTPBasicAuth(args.user, args.password)
 
 def loadTriples(targetFile):
@@ -37,7 +36,6 @@ for file in [f for f in os.listdir(inDir) if f.endswith('.ttl') and os.path.isfi
 
 dirs = [d for d in os.listdir(inDir) if not(d[0]=='.') and os.path.isdir(inDir + '/' + d)]
 
-#print(args.graph)
 for dir in dirs:
    sourceDir = inDir + '/' + dir
 
