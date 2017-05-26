@@ -13,6 +13,7 @@ args = argparser.parse_args()
 inDir = args.dir[0]
 repository = args.uri[0]
 
+print(args.user)
 auth = requests.auth.HTTPBasicAuth(args.user, args.password)
 
 def loadTriples(targetFile):
@@ -23,7 +24,7 @@ def loadTriples(targetFile):
    f.close()
 
    uri = repository
-   if len(args.graph)>0:
+   if args.graph is not None and len(args.graph)>0:
       uri = uri + "?context=" + urllib.parse.quote('<'+args.graph+'>')
    req = requests.post(uri,data=data.encode('utf-8'),headers={'content-type':'text/turtle; charset=utf-8'},auth=auth)
    if (req.status_code<200 or req.status_code>=300):
@@ -36,7 +37,7 @@ for file in [f for f in os.listdir(inDir) if f.endswith('.ttl') and os.path.isfi
 
 dirs = [d for d in os.listdir(inDir) if not(d[0]=='.') and os.path.isdir(inDir + '/' + d)]
 
-print(args.graph)
+#print(args.graph)
 for dir in dirs:
    sourceDir = inDir + '/' + dir
 
