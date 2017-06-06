@@ -1,19 +1,20 @@
-from flask import send_from_directory, render_template, abort
+from flask import Blueprint
+from flask import send_from_directory, render_template, abort, current_app
 import os, io
-from .app import app
 
-templateOptions = app.config.get('TEMPLATE_OPTIONS')
-if templateOptions is None:
-   templateOptions = {
-      'title' : 'My Journal'
-   }
+docs = Blueprint('duckpond_blog_docs',__name__)
 
-siteURL = app.config.get('SITE_URL')
-
-@app.route('/docs/<path:path>')
+@docs.route('/docs/<path:path>')
 def send_doc(path):
+   siteURL = current_app.config.get('SITE_URL')
 
-   dir = app.config.get('DOCS')
+   templateOptions = current_app.config.get('TEMPLATE_OPTIONS')
+   if templateOptions is None:
+      templateOptions = {
+         'title' : 'My Journal'
+      }
+
+   dir = current_app.config.get('DOCS')
    if dir is None:
       abort(404)
    dir = os.path.abspath(dir)
