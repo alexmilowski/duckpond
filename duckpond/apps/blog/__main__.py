@@ -1,8 +1,6 @@
 
 from duckpond.apps.blog.app import app
-from duckpond.apps.blog.assets import assets
-from duckpond.apps.blog.docs import docs
-from duckpond.apps.blog.views import views
+from duckpond.apps.blog.views import blog,assets,docs
 app.register_blueprint(assets)
 app.register_blueprint(docs)
 app.register_blueprint(views)

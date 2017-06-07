@@ -1,10 +1,10 @@
-from flask import Blueprint, request, render_template, abort, send_file, redirect, current_app
+from flask import Blueprint, request, render_template, abort, send_file, redirect, current_app, send_from_directory, Response, stream_with_context
 import logging,collections
 
 from duckpond.data import Pond,uripath
 from duckpond.data.pond import Facet
 
-views = Blueprint('duckpond_blog_views',__name__,template_folder='templates')
+blog = Blueprint('duckpond_blog',__name__,template_folder='templates')
 
 logger = logging.getLogger('webapp')
 
@@ -57,7 +57,7 @@ def renderKeyword(data,keyword,related,entries):
    except FileNotFoundError:
       abort(404)
 
-@views.route('/')
+@blog.route('/')
 def index():
 
    data = getPond(current_app.config)
@@ -73,7 +73,7 @@ def index():
    path = "/journal/entry/{}T{}/".format(date,time)
    return renderEntry(data,resource[0],entry=entry(entryInfo),following=entry(following) if following is not None and len(following)>0 else None,base=path,path=path)
 
-@views.route('/journal/entry/<date>T<time>/')
+@blog.route('/journal/entry/<date>T<time>/')
 def entryByTime(date,time):
 
    data = getPond(current_app.config)
@@ -89,7 +89,7 @@ def entryByTime(date,time):
 
    return renderEntry(data,resource[0],entry=entry(entryInfo),following=entry(following),preceding=entry(preceding),path=request.path)
 
-@views.route('/journal/entry/<date>T<time>/<path:path>')
+@blog.route('/journal/entry/<date>T<time>/<path:path>')
 def entryMedia(date,time,path):
 
    data = getPond(current_app.config)
@@ -103,7 +103,7 @@ def entryMedia(date,time,path):
    else:
       return send_file(resource[1])
 
-@views.route('/rel/keyword/<keyword>')
+@blog.route('/rel/keyword/<keyword>')
 def relKeyword(keyword):
 
    data = getPond(current_app.config)
@@ -116,6 +116,60 @@ def relKeyword(keyword):
       allKeywords.extend(relatedEntry['keywords'])
    return renderKeyword(data,keyword,set(allKeywords),entries)
 
-@views.errorhandler(404)
+@blog.errorhandler(404)
 def page_not_found(error):
    return render_template('error.html', siteURL=siteURL if siteURL is not None else request.url_root[0:-1], path=request.path, options=templateOptions, entry=None, error="I'm sorry.  I can't find that page.")
+
+
+docs = Blueprint('duckpond_blog_docs',__name__)
+
+@docs.route('/docs/<path:path>')
+def send_doc(path):
+   siteURL = current_app.config.get('SITE_URL')
+
+   templateOptions = current_app.config.get('TEMPLATE_OPTIONS')
+   if templateOptions is None:
+      templateOptions = {
+         'title' : 'My Journal'
+      }
+
+   location = current_app.config.get('DOCS')
+   if location is None:
+      abort(404)
+
+   if location[0:4]=='http':
+      url = location + path
+      req = requests.get(url, stream = True,headers={'Connection' : 'close'})
+      if req.headers['Content-Type'][0:9]=='text/html':
+         return render_template('content.html', siteURL=siteURL if siteURL is not None else request.url_root[0:-1], options=templateOptions, html=req.text, entry=None)
+      else:
+         return Response(stream_with_context(req.iter_content()), headers = dict(req.headers))
+
+   else:
+
+      dir = os.path.abspath(location)
+      if path.endswith('.html'):
+
+         glob = io.StringIO()
+         try:
+            with open(os.path.join(dir,path), mode='r', encoding='utf-8') as doc:
+               peeked = doc.readline()
+               if peeked.startswith('<!DOCTYPE'):
+                  return send_from_directory(dir, path)
+               glob.write(peeked)
+               for line in doc:
+                  glob.write(line)
+
+               return render_template('content.html', siteURL=siteURL if siteURL is not None else request.url_root[0:-1], options=templateOptions, html=glob.getvalue(), entry=None)
+         except FileNotFoundError:
+            abort(404)
+
+      return send_from_directory(dir, path)
+
+assets = Blueprint('duckpond_blog_assets',__name__)
+@assets.route('/assets/<path:path>')
+def send_asset(path):
+   dir = current_app.config.get('ASSETS')
+   if dir is None:
+      dir = __file__[:__file__.rfind('/')] + '/assets/'
+   return send_from_directory(dir, path)
