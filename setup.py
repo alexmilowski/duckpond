@@ -23,13 +23,24 @@ content, its inter-relations, ordering, and other such content relations.  From
 that, we can derive a useful presentation on the Web.
 """
 
+import re
+vdir = __file__[0:__file__.rfind('/')]+'/' if __file__.rfind('/')>=0 else ''
+with open(vdir+'duckpond/__init__.py', 'rt') as vfile:
+   verstrline = vfile.read()
+   VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
+   mo = re.search(VSRE, verstrline, re.M)
+   if mo:
+      version_info = mo.group(1)
+   else:
+      raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
+
 setup(
     name='duckpond',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.8.2',
+    version=version_info,
 
     description='A semantic pond for content delivery',
     long_description=long_description,
