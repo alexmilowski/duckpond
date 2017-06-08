@@ -1,6 +1,8 @@
-from flask import Blueprint, request, render_template, abort, send_file, redirect, current_app, send_from_directory, Response, stream_with_context
+from flask import Blueprint, request, render_template_string, abort, send_file, redirect, current_app, send_from_directory, Response, stream_with_context
 import logging,collections
 import requests
+from io import StringIO
+import os
 
 from duckpond.data import Pond,uripath
 from duckpond.data.pond import Facet
@@ -24,11 +26,16 @@ def getJournalCriteria(config):
    return {'schema:genre' : journalGenre}
 
 
-def getTemplateOptions(config):
+def generate_template(config,base):
    options = config.get('TEMPLATE_OPTIONS')
-   return options if options is not None else {
-      'title' : 'My Journal'
-   }
+   output = StringIO()
+   output.write('{{% extends "{}" %}}\n'.format(base))
+   if options is not None:
+      for name in options:
+         output.write('{{% block {} %}}\n'.format(name))
+         output.write(options[name])
+         output.write('\n{% endblock %}\n')
+   return output.getvalue()
 
 def entry(e):
    if e is None:
@@ -46,7 +53,7 @@ def renderEntry(data,basedOnUrl,entry=None,preceding=None,following=None,base=No
       content = data.getResourceText(basedOnUrl)
       topics = [(key,value) for key,value in data.getCategoryCount().items()]
       sortedTopics = sorted(topics,key=lambda x : str.lower(x[0]))
-      return render_template('base.html', siteURL=siteURL(current_app.config,request), path=path, options=getTemplateOptions(current_app.config), entry=entry,entryContent=content,preceding=preceding,following=following,keywords=sorted(data.getEntityCategories(entry['subject']),key=str.lower),topics=sortedTopics,base=base)
+      return render_template_string(generate_template(current_app.config,'base.html'), siteURL=siteURL(current_app.config,request), path=path, entry=entry,entryContent=content,preceding=preceding,following=following,keywords=sorted(data.getEntityCategories(entry['subject']),key=str.lower),topics=sortedTopics,base=base)
    except FileNotFoundError:
       abort(404)
 
@@ -54,7 +61,7 @@ def renderKeyword(data,keyword,related,entries):
    try:
       topics = [(key,value) for key,value in data.getCategoryCount().items()]
       sortedTopics = sorted(topics,key=lambda x : str.lower(x[0]))
-      return render_template('keyword.html', entry=None, siteURL=siteURL(current_app.config,request), path=request.path, options=getTemplateOptions(current_app.config), keyword=keyword,related=sorted(related,key=str.lower),entries=entries,topics=sortedTopics)
+      return render_template_string(generate_template(current_app.config,'keyword.html'), entry=None, siteURL=siteURL(current_app.config,request), path=request.path, keyword=keyword,related=sorted(related,key=str.lower),entries=entries,topics=sortedTopics)
    except FileNotFoundError:
       abort(404)
 
@@ -95,7 +102,7 @@ def entryMedia(date,time,path):
 
    data = getPond(current_app.config)
 
-   uri = app.config['CACHE']['base'] + date + '/' + path
+   uri = current_app.config['CACHE']['base'] + date + '/' + path
    resource = data.getResource(uri)
    if resource[0] == Pond.ResourceType.uri:
       return redirect(resource[1], code=resource[2])
@@ -119,7 +126,7 @@ def relKeyword(keyword):
 
 @blog.errorhandler(404)
 def page_not_found(error):
-   return render_template('error.html', siteURL=siteURL if siteURL is not None else request.url_root[0:-1], path=request.path, options=templateOptions, entry=None, error="I'm sorry.  I can't find that page.")
+   return render_template_string(generate_template(current_app.config,'error.html'), siteURL=siteURL if siteURL is not None else request.url_root[0:-1], path=request.path, entry=None, error="I'm sorry.  I can't find that page.")
 
 
 docs = Blueprint('duckpond_blog_docs',__name__)
@@ -127,12 +134,6 @@ docs = Blueprint('duckpond_blog_docs',__name__)
 @docs.route('/docs/<path:path>')
 def send_doc(path):
    siteURL = current_app.config.get('SITE_URL')
-
-   templateOptions = current_app.config.get('TEMPLATE_OPTIONS')
-   if templateOptions is None:
-      templateOptions = {
-         'title' : 'My Journal'
-      }
 
    location = current_app.config.get('DOCS')
    if location is None:
@@ -142,7 +143,7 @@ def send_doc(path):
       url = location + path
       req = requests.get(url, stream = True,headers={'Connection' : 'close'})
       if req.headers['Content-Type'][0:9]=='text/html':
-         return render_template('content.html', siteURL=siteURL if siteURL is not None else request.url_root[0:-1], options=templateOptions, html=req.text, entry=None)
+         return render_template_string(generate_template(current_app.config,'content.html'), siteURL=siteURL if siteURL is not None else request.url_root[0:-1], html=req.text, entry=None)
       else:
          return Response(stream_with_context(req.iter_content()), headers = dict(req.headers))
 
@@ -151,7 +152,7 @@ def send_doc(path):
       dir = os.path.abspath(location)
       if path.endswith('.html'):
 
-         glob = io.StringIO()
+         glob = StringIO()
          try:
             with open(os.path.join(dir,path), mode='r', encoding='utf-8') as doc:
                peeked = doc.readline()
@@ -161,7 +162,7 @@ def send_doc(path):
                for line in doc:
                   glob.write(line)
 
-               return render_template('content.html', siteURL=siteURL if siteURL is not None else request.url_root[0:-1], options=templateOptions, html=glob.getvalue(), entry=None)
+               return render_template_string(generate_template(current_app.config,'content.html'), siteURL=siteURL if siteURL is not None else request.url_root[0:-1], html=glob.getvalue(), entry=None)
          except FileNotFoundError:
             abort(404)
 

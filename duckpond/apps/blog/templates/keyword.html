@@ -4,11 +4,11 @@
 {% block content %}
 <article class="related">
 <h1>{{keyword}}</h1>
-<p>{% for keyword in related %}{% if loop.index>1 %}, {% endif %}<a href="/rel/keyword/{{keyword|urlencode}}">{{keyword}}</a>{% endfor %}</p>
+<p>{% for keyword in related %}{% if loop.index>1 %}, {% endif %}<a href="{{url_for('duckpond_blog.index')}}rel/keyword/{{keyword|urlencode}}">{{keyword}}</a>{% endfor %}</p>
 {% for entry in entries %}
 <section>
-<h2> ⇒ <a href="{{entry['uri']|urlencode}}">{{entry['title']|escape}}</a></h2>
-<p>{% for keyword in entry['keywords'] %}{% if loop.index>1 %}, {% endif %}<a href="/rel/keyword/{{keyword|urlencode}}">{{keyword}}</a>{% endfor %}</p>
+<h2> ⇒ <a href="{{url_for('duckpond_blog.index')}}{{entry['uri'][1:]|urlencode}}">{{entry['title']|escape}}</a></h2>
+<p>{% for keyword in entry['keywords'] %}{% if loop.index>1 %}, {% endif %}<a href="{{url_for('duckpond_blog.index')}}rel/keyword/{{keyword|urlencode}}">{{keyword}}</a>{% endfor %}</p>
 </section>
 {% endfor %}
 </article>

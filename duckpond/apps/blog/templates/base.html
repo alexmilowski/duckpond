@@ -7,8 +7,8 @@
    {{ entry['title']|escape }}
 {% endif %}
 </title>
-{% if not base == None %}
-<base href="{{base}}"/>
+{% if base is defined and not base == None %}
+<base href="{{url_for('duckpond_blog.index')}}{{base[1:]}}"/>
 {% endif %}
 {% if not entry == None %}
 <meta property="og:url"           content="{{siteURL|escape}}{{path|escape}}" />
@@ -18,43 +18,40 @@
 {% endif %}
 
 <meta name=viewport content="width=device-width, initial-scale=0.8125"/>
-<link rel="stylesheet" type="text/css" href="/assets/css/style.css"/>
-<link rel="stylesheet" type="text/css" href="/assets/css/print.css"/>
-<link rel="stylesheet" type="text/css" href="/assets/css/media.css"/>
+<link rel="stylesheet" type="text/css" href="{{url_for('duckpond_blog.index')}}assets/css/style.css"/>
+<link rel="stylesheet" type="text/css" href="{{url_for('duckpond_blog.index')}}assets/css/print.css"/>
+<link rel="stylesheet" type="text/css" href="{{url_for('duckpond_blog.index')}}assets/css/media.css"/>
 <script type="text/javascript">
 var page_url = "{{siteURL|escape}}{{path|escape}}";
 </script>
 {% block head %}
 {% endblock %}
-{% if not options.get('head') == None %}
-{{ options['head']|safe }}
-{% endif %}
+{% block head_extras %}
+{% endblock %}
 </head>
 <body class="entry">
 <header>
-<h1>{{options['title']|safe}}</h1>
+{% block header_title %}<h1>My Journal</h1>{% endblock %}
 </header>
 
 
 {% block content %}
 <main>
    <aside>
-   {% if not options.get('about') == None %}
-   {{ options['about']|safe }}
-   {% endif %}
+   {% block about %}
+   {% endblock %}
    {% if keywords|length > 0 %}
    <section id="side-keywords">
     <h2>Keywords</h2>
-    {% for keyword in keywords %}{% if loop.index>1 %}, {% endif %}<a href="/rel/keyword/{{keyword|urlencode}}">{{keyword}}</a>{% endfor %}
+    {% for keyword in keywords %}{% if loop.index>1 %}, {% endif %}<a href="{{url_for('duckpond_blog.index')}}rel/keyword/{{keyword|urlencode}}">{{keyword}}</a>{% endfor %}
    </section>
    {% endif %}
-   {% if not options.get('sidebar') == None %}
-   {{ options['sidebar']|safe }}
-   {% endif %}
+   {% block sidebar %}
+   {% endblock %}
    {% if topics|length > 0 %}
    <section id="side-topics">
     <h2>Topics</h2>
-    {% for keyword,count in topics %}<a href="/rel/keyword/{{keyword|urlencode}}">{{keyword}}</a> ({{count}}) {% endfor %}
+    {% for keyword,count in topics %}<a href="{{url_for('duckpond_blog.index')}}rel/keyword/{{keyword|urlencode}}">{{keyword}}</a> ({{count}}) {% endfor %}
    </section>
    {% endif %}
    </aside>
@@ -63,21 +60,19 @@ var page_url = "{{siteURL|escape}}{{path|escape}}";
    <nav>
    <section class="article-navigation">
    {% if (preceding != None and following == None) %}⇐ {% endif %}
-   {% if (preceding != None) %}<a href="{{preceding['uri']}}" title="preceding entry">{{preceding['title']}}</a> {% endif %}
+   {% if (preceding != None) %}<a href="{{url_for('duckpond_blog.index')}}{{preceding['uri'][1:]}}" title="preceding entry">{{preceding['title']}}</a> {% endif %}
    {% if (preceding != None and following !=None) %} ⇔ {% endif %}
-   {% if (following != None) %}<a href="{{following['uri']}}" title="following entry">{{following['title']}}</a>{% endif %}
+   {% if (following != None) %}<a href="{{url_for('duckpond_blog.index')}}{{following['uri'][1:]}}" title="following entry">{{following['title']}}</a>{% endif %}
    {% if (preceding == None and following != None) %} ⇒{% endif %}
    </section>
-   {% if not options.get('nav') == None %}
-   {{ options['nav']|safe }}
-   {% endif %}
+   {% block nav %}
+   {% endblock %}
    </nav>
    <section class="info">
    {% if not entry == None %}
-   <p class="metadata"><a href="{{path}}" title="link to this entry">&#x1f517;</a> Published on {{entry['date']|escape}} at {{entry['time']|escape}}</p>
-   {% if not options.get('info') == None %}
-   {{ options['info']|safe }}
-   {% endif %}
+   <p class="metadata"><a href="{{url_for('duckpond_blog.index')}}{{path[1:]}}" title="link to this entry">&#x1f517;</a> Published on {{entry['date']|escape}} at {{entry['time']|escape}}</p>
+   {% block info %}
+   {% endblock %}
    {% endif %}
    </section>
 
@@ -89,15 +84,14 @@ var page_url = "{{siteURL|escape}}{{path|escape}}";
 <nav>
 <section class="article-navigation">
 {% if (preceding != None and following == None) %}⇐ {% endif %}
-{% if (preceding != None) %}<a href="{{preceding['uri']}}">{{preceding['title']}}</a> {% endif %}
+{% if (preceding != None) %}<a href="{{url_for('duckpond_blog.index')}}{{preceding['uri'][1:]}}">{{preceding['title']}}</a> {% endif %}
 {% if (preceding != None and following !=None) %} ⇔ {% endif %}
-{% if (following != None) %}<a href="{{following['uri']}}">{{following['title']}}</a>{% endif %}
+{% if (following != None) %}<a href="{{url_for('duckpond_blog.index')}}{{following['uri'][1:]}}">{{following['title']}}</a>{% endif %}
 {% if (preceding == None and following != None) %} ⇒{% endif %}
 </section>
 </nav>
-{% if not options.get('footer') == None %}
-{{ options['footer']|safe }}
-{% endif %}
+{% block footer %}
+{% endblock %}
 </footer>
 </article>
 </main>
