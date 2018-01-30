@@ -3,7 +3,7 @@ import json,io,os
 import logging
 from enum import Enum
 import urllib
-from .sparql import SPARQL
+from .sparql import SPARQL, var, expr
 
 def strip(value):
    if value is None:
@@ -403,7 +403,7 @@ class Pond:
       expr = '?s rdf:type {0}; {1} ?category'.format(entityType,categoryFacet)
       q = SPARQL() \
             .start(self.prefixes) \
-            .select(['category','(count(?category) as ?count)']) \
+            .select(['category',expr('count(?category) as ?count')]) \
             .fromGraphs(self.graphs) \
             .where(expr) \
             .groupBy('?category') \
