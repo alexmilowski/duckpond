@@ -4,6 +4,7 @@ import json
 import urllib
 from pyld import jsonld
 from duckpond.data import SPARQL,var,expr,in_expr,tuple_expr,graph_expr
+import re
 
 class RESTIOError(IOError):
    def __init__(self,msg,url,status,text):
@@ -52,12 +53,13 @@ def subjectClause(out,subjects):
 
 
 class SPARQLConnection:
-   def __init__(self,url,username=None,password=None):
+   def __init__(self,url,username=None,password=None,context={}):
       self.url = url
       if self.url[-1]=='/':
          self.url = self.url[0:-1]
       self.username = username
       self.password = password
+      self.context = context
 
    def get(self,graphs=[],subjects=[],limit=None):
 
@@ -72,7 +74,7 @@ class SPARQLConnection:
       else:
          query.where(*list(map(lambda g:graph_expr(g,tuples),graphs)))
 
-      print(query)
+      #print(query)
 
       params = {}
       params = {'query':str(query)}
@@ -81,24 +83,36 @@ class SPARQLConnection:
       uri = self.url
       req = requests.post(uri,params=params,headers={'accept':'application/json','content-type':'application/x-www-form-urlencoded; charset=utf-8'},auth=self.get_authentication())
 
-      if (req.status_code>=200 or req.status_code<300):
-         return from_json(json.loads(req.text))
+      #print(req.headers)
+
+      if req.status_code>=200 and req.status_code<300:
+         data = json.loads(req.text)
+         #print(data)
+         data = from_json(data)
+         #print(data)
+         return data
       else:
-         raise RESTIOError('Cannot query repository, status={}'.format(req.status_code),uri,req.status_code,req.text)
+         raise RESTIOError('Cannot retrieve graph and subjects, status={}'.format(req.status_code),uri,req.status_code,req.text)
 
    def query(self,q,limit=None):
       params = {'query':str(q)}
       if limit is not None:
          params['limit'] = limit
 
+      isSelect = re.search('SELECT(\s+\?\w+)+',q,re.IGNORECASE)
+
       uri = self.url
       req = requests.post(uri,params=params,headers={'accept':'application/json','content-type':'application/x-www-form-urlencoded; charset=utf-8'},auth=self.get_authentication())
 
-      if (req.status_code>=200 or req.status_code<300):
+      #print(req.headers)
+
+      if req.status_code>=200 and req.status_code<300:
          data = json.loads(req.text)
-         return from_json(data)
+         if not isSelect:
+            data = from_json(data)
+         return data
       else:
-         raise RESTIOError('Cannot query repository, graphs {}, status={}'.format(graphs,req.status_code),uri,req.status_code,req.text)
+         raise RESTIOError('Cannot query repository:\n{}\n{}\nstatus={}'.format(q,req.text,req.status_code),uri,req.status_code,req.text)
 
    def delete(self,graphs=[],subjects=[]):
       tuples = tuple_expr('s','p','o')
@@ -117,13 +131,15 @@ class SPARQLConnection:
       if (req.status_code<200 or req.status_code>=300):
          raise RESTIOError('Cannot delete graphs {}, status={}'.format(graphs,req.status_code),uri,req.status_code,req.text)
 
-   def replace(self,data,graph=None):
+   def update(self,data,graph=None,subjects=[]):
 
       tuples = tuple_expr('s','p','o')
-      if len(graphs)==0 :
+      if len(subjects)>0:
+         tuples.filter(in_expr(var('s'),*subjects))
+      if graph is None:
          query.delete(tuples)
       else:
-         query.delete(*list(map(lambda g:graph_expr(g,tuples),graphs)))
+         query.delete(graph_expr(graph,tuples))
 
       content = jsonld.normalize(data, {'algorithm': 'URDNA2015', 'format': 'application/nquads'}).encode('utf-8')
       query.insert(graph_expr(graph,content) if graph is not None else content)
@@ -134,7 +150,7 @@ class SPARQLConnection:
       req = requests.post(uri,params=params,headers={'accept':'application/json','content-type':'application/x-www-form-urlencoded; charset=utf-8'},auth=self.get_authentication())
 
       if (req.status_code<200 or req.status_code>=300):
-         raise RESTIOError('Cannot replace graph {}, status={}'.format(graph,req.status_code),uri,req.status_code,req.text)
+         raise RESTIOError('Cannot update graph {}, status={}'.format(graph,req.status_code),uri,req.status_code,req.text)
 
    def append(self,data,graph=None):
 
@@ -158,47 +174,51 @@ class SPARQLConnection:
       else:
          return (self.username, self.password)
 
-def make_connection(url,username=None,password=None):
-   return SPARQLConnection(url,username,password)
+def make_connection(url,username=None,password=None,context=None):
+   return SPARQLConnection(url,username,password,context)
 
 def get_connection():
    if has_app_context():
       connection = getattr(g,'_jsonld_service',None)
       if connection is None:
          service_def = current_app.config.get('SPARQL_ENDPOINT')
+         context = current_app.config.get('LD_CONTEXT')
+
          _make_connection = getattr(g,'_jsonld_make_connection',None)
          if _make_connection is None:
             _make_connection = make_connection
-         connection = g._jsonld_service = _make_connection(service_def.get('url'),username=service_def.get('username'),password=service_def.get('password'))
+         connection = g._jsonld_service = _make_connection(service_def.get('url'),username=service_def.get('username'),password=service_def.get('password'),context=context)
       return connection
    else:
       raise ValueError('No connection can be created')
 
-def get(graphs=[],subjects=[],connection=None):
+def get_ld(graphs=[],subjects=[],connection=None):
    if connection is None:
       connection = get_connection()
 
-   return connection.get(graphs,subjects)
+   ld = connection.get(graphs,subjects)
+   return jsonld.compact(ld,connection.context)
 
-def query(q,graphs=[],connection=None):
+def query_ld(q,limit=None,connection=None):
    if connection is None:
       connection = get_connection()
 
-   return connection.query(q,graphs=graphs)
+   ld = connection.query(q,limit=limit)
+   return ld if ld.get('names') is not None and ld.get('values') is not None else jsonld.compact(ld,connection.context)
 
-def delete_graph(graphs=[],connection=None):
+def delete_ld(graphs=[],subjects=[],connection=None):
    if connection is None:
       connection = get_connection()
 
-   connection.delete(graphs)
+   connection.delete(graphs,subjects)
 
-def update_graph(data,graph=None,connection=None):
+def update_ld(data,graph=None,subjects=[],connection=None):
    if connection is None:
       connection = get_connection()
 
-   return connection.replace(data,graph)
+   return connection.replace(data,graph,subjects)
 
-def append_graph(data,graph=None,connection=None):
+def append_ld(data,graph=None,connection=None):
    if connection is None:
       connection = get_connection()
 

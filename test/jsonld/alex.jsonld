@@ -1,0 +1,7 @@
+{
+   "@context" : { "@vocab" : "http://schema.org/"},
+   "@id" : "http://www.milowski.com/#alexmilowski",
+   "name": "Alex Miłowski",
+   "url": {"@id": "http://www.milowski.com/"},
+   "image": {"@id": "http://www.milowski.com/me.jpg"}
+}
