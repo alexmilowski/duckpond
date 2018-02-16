@@ -13,7 +13,7 @@ class var:
    def __str__(self):
       return '?'+str(self.name)
 
-class expr:
+class inline_expr:
    def __init__(self,value):
       self.expr = value
    def __str__(self):
