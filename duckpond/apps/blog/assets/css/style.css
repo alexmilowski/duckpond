@@ -36,6 +36,10 @@ article footer nav {
    margin-bottom: 1em;
 }
 
+article p {
+   text-align: justify;
+}
+
 h1  img {
    vertical-align: middle;
 }

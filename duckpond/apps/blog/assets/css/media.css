@@ -1,15 +1,22 @@
-@media screen and (max-device-width: 480px) {
+@media screen and (max-width: 768px) {
 
 body {
-   font-size: 18pt;
-   border: 1px solid black;
+   margin-left: 5px;
+   margin-right: 5px;
+   padding-left: 0px;
+   padding-right: 0px;
+   min-width: auto;
+}
+
+article header nav .article-navigation, article footer nav .article-navigation {
+   text-align: center;
 }
 
 main {
    flex-direction: column;
 }
 
-main > article {
+article {
    margin-right: 0px;
    min-width: auto;
    width: auto;
