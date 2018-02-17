@@ -1,11 +1,46 @@
-from flask import Blueprint, request, render_template_string, abort, send_file, redirect, current_app, send_from_directory, Response, stream_with_context
+from flask import Blueprint, request, render_template_string, abort, send_file, redirect, current_app, send_from_directory, Response, stream_with_context, after_this_request
 import logging,collections
 import requests
-from io import StringIO
+from io import StringIO,BytesIO
 import os
+import gzip
+import functools
 
 from duckpond.data import Pond,uripath
 from duckpond.data.pond import Facet
+
+def gzipped(f):
+    @functools.wraps(f)
+    def view_func(*args, **kwargs):
+        @after_this_request
+        def zipper(response):
+            accept_encoding = request.headers.get('Accept-Encoding', '')
+
+            if 'gzip' not in accept_encoding.lower():
+                return response
+
+            response.direct_passthrough = False
+
+            if (response.status_code < 200 or
+                response.status_code >= 300 or
+                'Content-Encoding' in response.headers):
+                return response
+            gzip_buffer = BytesIO()
+            gzip_file = gzip.GzipFile(mode='wb',
+                                      fileobj=gzip_buffer)
+            gzip_file.write(response.data)
+            gzip_file.close()
+
+            response.data = gzip_buffer.getvalue()
+            response.headers['Content-Encoding'] = 'gzip'
+            response.headers['Vary'] = 'Accept-Encoding'
+            response.headers['Content-Length'] = len(response.data)
+
+            return response
+
+        return f(*args, **kwargs)
+
+    return view_func
 
 blog = Blueprint('duckpond_blog',__name__,template_folder='templates')
 
@@ -66,6 +101,7 @@ def renderKeyword(data,keyword,related,entries):
       abort(404)
 
 @blog.route('/')
+@gzipped
 def index():
 
    data = getPond(current_app.config)
@@ -82,6 +118,7 @@ def index():
    return renderEntry(data,resource[0],entry=entry(entryInfo),following=entry(following) if following is not None and len(following)>0 else None,base=path,path=path)
 
 @blog.route('/journal/entry/<date>T<time>/')
+@gzipped
 def entryByTime(date,time):
 
    data = getPond(current_app.config)
@@ -98,6 +135,7 @@ def entryByTime(date,time):
    return renderEntry(data,resource[0],entry=entry(entryInfo),following=entry(following),preceding=entry(preceding),path=request.path)
 
 @blog.route('/journal/entry/<date>T<time>/<path:path>')
+@gzipped
 def entryMedia(date,time,path):
 
    data = getPond(current_app.config)
@@ -112,6 +150,7 @@ def entryMedia(date,time,path):
       return send_file(resource[1])
 
 @blog.route('/rel/keyword/<keyword>')
+@gzipped
 def relKeyword(keyword):
 
    data = getPond(current_app.config)
@@ -132,6 +171,7 @@ def page_not_found(error):
 docs = Blueprint('duckpond_blog_docs',__name__)
 
 @docs.route('/docs/<path:path>')
+@gzipped
 def send_doc(path):
    siteURL = current_app.config.get('SITE_URL')
 
@@ -170,6 +210,7 @@ def send_doc(path):
 
 assets = Blueprint('duckpond_blog_assets',__name__)
 @assets.route('/assets/<path:path>')
+@gzipped
 def send_asset(path):
    dir = current_app.config.get('ASSETS')
    if dir is None:
