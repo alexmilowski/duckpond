@@ -94,7 +94,7 @@ class Pond:
 
    def __init__(self,service,cache=None,facets=None,graphs=None):
       self.logger = logging.getLogger(__name__)
-      self.logger.setLevel(logging.DEBUG)
+      #self.logger.setLevel(logging.DEBUG)
       self.logger.debug('Debug log for '+__name__)
       self.service = service
       self.cache = cache
